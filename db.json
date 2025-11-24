@@ -1,0 +1,148 @@
+{
+  "features": [
+    {
+      "id": "1",
+      "icon": "🎯",
+      "title": "Personalized Matching",
+      "description": "Our smart algorithm connects you with the perfect skill trading partners based on your interests and expertise."
+    },
+    {
+      "id": "2",
+      "icon": "🌟",
+      "title": "Diverse Skills",
+      "description": "From coding to cooking, music to marketing - discover and share knowledge across countless skill categories."
+    },
+    {
+      "id": "3",
+      "icon": "🤝",
+      "title": "Community Driven",
+      "description": "Join a supportive community where everyone learns and teaches, creating meaningful connections along the way."
+    },
+    {
+      "id": "4",
+      "icon": "💡",
+      "title": "Free to Use",
+      "description": "No hidden fees or premium tiers. TradeASkill believes knowledge sharing should be accessible to everyone."
+    }
+  ],
+  "skills": [
+    {
+      "id": "101",
+      "title": "Web Development",
+      "description": "Learn to build responsive websites using HTML, CSS, and JavaScript.",
+      "category": "technology",
+      "level": "beginner",
+      "duration": "10 Lessons",
+      "teacher": {
+        "name": "Aarav Mehta",
+        "rating": 4.8,
+        "completedTrades": 52
+      }
+    },
+    {
+      "id": "102",
+      "title": "Spoken English",
+      "description": "Enhance your communication skills and fluency in English.",
+      "category": "language",
+      "level": "intermediate",
+      "duration": "8 Lessons",
+      "teacher": {
+        "name": "Shikha Sharma",
+        "rating": 4.9,
+        "completedTrades": 78
+      }
+    },
+    {
+      "id": "103",
+      "title": "Guitar Basics",
+      "description": "Start your musical journey with beginner-friendly guitar lessons.",
+      "category": "arts",
+      "level": "beginner",
+      "duration": "12 Lessons",
+      "teacher": {
+        "name": "Aryan Kapoor",
+        "rating": 4.5,
+        "completedTrades": 35
+      }
+    },
+    {
+      "id": "104",
+      "title": "Python Programming",
+      "description": "Master Python programming with hands-on coding practice.",
+      "category": "technology",
+      "level": "advanced",
+      "duration": "15 Lessons",
+      "teacher": {
+        "name": "Jashan Kaur",
+        "rating": 5,
+        "completedTrades": 110
+      }
+    },
+    {
+      "id": "105",
+      "title": "Cooking Basics",
+      "description": "Learn delicious and easy-to-make recipes for everyday cooking.",
+      "category": "arts",
+      "level": "beginner",
+      "duration": "6 Lessons",
+      "teacher": {
+        "name": "Kritika Verma",
+        "rating": 4.7,
+        "completedTrades": 60
+      }
+    },
+    {
+      "id": "106",
+      "title": "Graphic Design",
+      "description": "Learn creative design skills with Photoshop and Illustrator.",
+      "category": "technology",
+      "level": "intermediate",
+      "duration": "9 Lessons",
+      "teacher": {
+        "name": "Hardeep Singh",
+        "rating": 4.6,
+        "completedTrades": 44
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "1763815525240",
+      "firstName": "Jashneer",
+      "lastName": "Kaur",
+      "email": "jashneerkaur252@gmail.com",
+      "password": "#Jashneer_23",
+      "bio": "cse student",
+      "skillsToTeach": [
+        "javascript",
+        "java",
+        "react"
+      ],
+      "skillsToLearn": [
+        "python"
+      ],
+      "dateJoined": "11/22/2025",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1763960665504",
+      "firstName": "khushi",
+      "lastName": "verma",
+      "email": "khushi2@gmail.com",
+      "password": "KhushiVerma56",
+      "bio": "cse student",
+      "skillsToTeach": [
+        "react"
+      ],
+      "skillsToLearn": [
+        "python"
+      ],
+      "dateJoined": "11/24/2025",
+      "rating": 0,
+      "trades": 0
+    }
+  ],
+  "swapRequests": [],
+  "swapReviews": []
+}
