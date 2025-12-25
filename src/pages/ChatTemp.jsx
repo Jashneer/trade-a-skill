@@ -1,16 +1,14 @@
-// src/pages/ChatPage.jsx
+// src/pages/ChatTemp.jsx
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const getSenderName = (user) => user?.firstName || 'You';
 
-// Utility to extract query parameters
 const useQuery = () => {
     return new URLSearchParams(useLocation().search);
 };
 
-// Simulated teacher responses
 const CONTEXTUAL_RESPONSES = {
     GREETING: [
         "Hello! I'm happy to chat about trading skills. What skill are you offering me?",
@@ -38,7 +36,8 @@ const CONTEXTUAL_RESPONSES = {
     ]
 };
 
-const ChatPage = () => {
+// Renamed component to match filename
+const ChatTemp = () => {
     const { teacherId } = useParams(); 
     const navigate = useNavigate();
     const location = useLocation();
@@ -58,7 +57,6 @@ const ChatPage = () => {
     const [isSchedulingConfirmed, setIsSchedulingConfirmed] = useState(false);
     const lastRepliedMessageId = useRef(null);
 
-    // Reset chat on navigation
     useEffect(() => {
         setMessages([]);
         setIsInitialGreetingSent(false);
@@ -66,7 +64,6 @@ const ChatPage = () => {
         lastRepliedMessageId.current = null;
     }, [teacherId, skillTitle]);
 
-    // Handle Simulated Reply
     useEffect(() => {
         const lastMessage = messages[messages.length - 1];
 
@@ -252,4 +249,4 @@ const ChatPage = () => {
     );
 };
 
-export default ChatPage;
+export default ChatTemp; // Renamed export
