@@ -12,7 +12,7 @@ import DashboardPage from './pages/DashboardPage';
 import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
 import SkillDetailPage from './pages/SkillDetailPage'; 
-import ChatPage from './pages/ChatPage';
+import ChatPage from '.pages/ChatPage';
 import LoginPage from './pages/LoginPage'; // Added for complete Auth flow
 
 // Styles
