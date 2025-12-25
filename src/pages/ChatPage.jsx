@@ -1,16 +1,16 @@
-// src/pages/ChatPage.jsx (FINAL STABLE VERSION - Input and Button Fix)
+// src/pages/ChatPage.jsx
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const getSenderName = (user) => user.firstName || 'You';
+const getSenderName = (user) => user?.firstName || 'You';
 
 // Utility to extract query parameters
 const useQuery = () => {
     return new URLSearchParams(useLocation().search);
 };
 
-// Define a pool of contextual simulated teacher responses (Same as before)
+// Simulated teacher responses
 const CONTEXTUAL_RESPONSES = {
     GREETING: [
         "Hello! I'm happy to chat about trading skills. What skill are you offering me?",
@@ -32,7 +32,6 @@ const CONTEXTUAL_RESPONSES = {
         "Great! Can you tell me a little bit about your background in that field?",
     ],
     DEFAULT: [
-        // Final logistics and teaching-method focused responses (avoid further scheduling prompts)
         "I think this trade could work well. Tell me what your preferred method of teaching is (video, screen-share, or step-by-step exercises).",
         "Great — I usually teach via short demonstrations followed by practice. Does that teaching style work for you?",
         "Perfect. I'll prepare a concise plan for our first session focusing on fundamentals and hands-on practice.",
@@ -51,16 +50,15 @@ const ChatPage = () => {
 
     const skillTitle = useMemo(() => {
         return decodeURIComponent(query.get('skill') || 'the requested skill'); 
-    }, [location.search]);
+    }, [location.search, query]);
 
-    // Start with an empty message array.
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState(''); 
     const [isInitialGreetingSent, setIsInitialGreetingSent] = useState(false); 
-    const [isSchedulingConfirmed, setIsSchedulingConfirmed] = useState(false); // prevents availability loop
+    const [isSchedulingConfirmed, setIsSchedulingConfirmed] = useState(false);
     const lastRepliedMessageId = useRef(null);
 
-    // Reset messages when navigating to a new chat
+    // Reset chat on navigation
     useEffect(() => {
         setMessages([]);
         setIsInitialGreetingSent(false);
@@ -68,40 +66,33 @@ const ChatPage = () => {
         lastRepliedMessageId.current = null;
     }, [teacherId, skillTitle]);
 
-
-    // ----------------------------------------------------
-    // HANDLE SIMULATED TEACHER REPLY (Contextual Flow)
-    // ----------------------------------------------------
+    // Handle Simulated Reply
     useEffect(() => {
         const lastMessage = messages[messages.length - 1];
 
-        // Only respond to the user's newest message once
         if (lastMessage && lastMessage.sender === currentUserName && lastRepliedMessageId.current !== lastMessage.id) {
             const text = lastMessage.text.toLowerCase();
             let responsePool = CONTEXTUAL_RESPONSES.DEFAULT;
 
-            const isSchedulingText = text.includes("available") || text.includes("when") || text.includes("time") || text.includes("schedule") || text.includes("pm") || text.includes("am") || text.includes("thursday") || text.includes("evening");
+            const isSchedulingText = /available|when|time|schedule|pm|am|thursday|evening/.test(text);
 
-            // Determine Context (Prioritized checks)
             if (isSchedulingText) {
                 if (!isSchedulingConfirmed) {
                     responsePool = CONTEXTUAL_RESPONSES.AVAILABILITY;
                     setIsSchedulingConfirmed(true);
                 } else {
-                    // Scheduling already confirmed once — move conversation forward
                     responsePool = CONTEXTUAL_RESPONSES.DEFAULT;
                 }
-            } else if (text.includes("experience") || text.includes("how much") || text.includes("years") || text.includes("detail")) {
+            } else if (/experience|how much|years|detail/.test(text)) {
                 responsePool = CONTEXTUAL_RESPONSES.TEACHER_DETAILS_QUERY;
-            } else if (text.includes("skill") || text.includes("teach") || text.includes("offering") || text.includes("what you can")) {
+            } else if (/skill|teach|offering|what you can/.test(text)) {
                 responsePool = CONTEXTUAL_RESPONSES.ASK_USER_SKILLS;
-            } else if (text.includes("hi") || text.includes("hello") || text.includes("hey")) {
+            } else if (/hi|hello|hey/.test(text)) {
                 responsePool = CONTEXTUAL_RESPONSES.GREETING;
             }
 
             let teacherReply = responsePool[Math.floor(Math.random() * responsePool.length)];
 
-            // If it's the user's first message, prepend the contextual greeting
             if (!isInitialGreetingSent && messages.length > 0) {
                 teacherReply = `Hi, I saw your swap request for ${skillTitle}. ${teacherReply}`;
                 setIsInitialGreetingSent(true);
@@ -122,12 +113,8 @@ const ChatPage = () => {
         }
     }, [messages, currentUserName, skillTitle, isInitialGreetingSent, isSchedulingConfirmed]); 
 
-    // ----------------------------------------------------
-    // SWAP CONFIRMATION LOGIC
-    // ----------------------------------------------------
     const handleSecureDeal = () => {
-        // Ensure user is truly logged in AND has skills to offer
-        if (!isLoggedIn || user.skillsToTeach.length === 0) {
+        if (!isLoggedIn || !user?.skillsToTeach || user.skillsToTeach.length === 0) {
             alert("Action required: Please ensure you are signed in and have at least one skill listed to offer.");
             return;
         }
@@ -154,9 +141,6 @@ const ChatPage = () => {
         }
     };
 
-    // ----------------------------------------------------
-    // MESSAGE SEND HANDLER (Input Fix)
-    // ----------------------------------------------------
     const handleSend = (e) => {
         e.preventDefault();
         if (newMessage.trim() === '') return;
@@ -169,11 +153,10 @@ const ChatPage = () => {
         };
 
         setMessages(prev => [...prev, sentMessage]);
-        setNewMessage(''); // Fix: This resets the input field, enabling continuous typing.
+        setNewMessage(''); 
     };
     
-    // Check if the user has any skills to offer (for button enabling)
-    const canSecureDeal = isLoggedIn && user.skillsToTeach && user.skillsToTeach.length > 0;
+    const canSecureDeal = isLoggedIn && user?.skillsToTeach && user.skillsToTeach.length > 0;
 
     return (
         <main className="container" style={{ marginTop: '100px', padding: '20px' }}>
@@ -183,7 +166,7 @@ const ChatPage = () => {
                 Chat with {teacherId}
             </h1>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
-                You are: **{user.firstName} {user.lastName}** | Swapping to learn: **{skillTitle}**
+                You are: **{user?.firstName || 'Guest'} {user?.lastName || ''}** | Swapping to learn: **{skillTitle}**
             </p>
             
             <div style={{ 
@@ -197,7 +180,6 @@ const ChatPage = () => {
                 flexDirection: 'column',
                 justifyContent: 'space-between'
             }}>
-                {/* Message Display Area */}
                 <div style={{ flexGrow: 1, overflowY: 'auto', padding: '10px' }}>
                     {messages.map(msg => (
                         <div 
@@ -225,7 +207,6 @@ const ChatPage = () => {
                     ))}
                 </div>
 
-                {/* Secure Deal Button and Input */}
                 <div style={{ 
                     padding: '10px', 
                     borderTop: '1px solid var(--border-color)',
@@ -233,7 +214,6 @@ const ChatPage = () => {
                     flexDirection: 'column',
                     gap: '10px'
                 }}>
-                    {/* Secure Deal Row (Restored) */}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                         <button 
                             className="btn btn-secondary" 
@@ -253,7 +233,6 @@ const ChatPage = () => {
                         </button>
                     </div>
 
-                    {/* Message Input Row */}
                     <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
                         <input
                             type="text"
