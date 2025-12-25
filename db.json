@@ -141,6 +141,23 @@
       "dateJoined": "11/24/2025",
       "rating": 0,
       "trades": 0
+    },
+    {
+      "id": "1766674307657",
+      "firstName": "Jashneer",
+      "lastName": "Kaur",
+      "email": "jashneerkaur9@gmail.com",
+      "password": "#Jashneer_23",
+      "bio": "2nd year CSE Student",
+      "skillsToTeach": [
+        "javascript"
+      ],
+      "skillsToLearn": [
+        "python"
+      ],
+      "dateJoined": "12/25/2025",
+      "rating": 0,
+      "trades": 0
     }
   ],
   "swapRequests": [],

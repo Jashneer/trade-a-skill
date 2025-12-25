@@ -39,7 +39,7 @@ const CONTEXTUAL_RESPONSES = {
     ]
 };
 
-const ChatPage = () => {
+const chatPage = () => {
     const { teacherId } = useParams(); 
     const navigate = useNavigate();
     const location = useLocation();
@@ -273,4 +273,4 @@ const ChatPage = () => {
     );
 };
 
-export default ChatPage;
+export default chatPage;
