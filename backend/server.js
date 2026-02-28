@@ -34,6 +34,5 @@ app.post('/api/users', (req, res) => {
 app.listen(PORT, () => {
     console.log(`==========================================`);
     console.log(`SERVER RUNNING: http://localhost:${PORT}`);
-    console.log(`Member 1 Tasks: COMPLETED`);
     console.log(`==========================================`);
 });
