@@ -77,6 +77,56 @@ app.post('/api/activity-log', (req, res) => {
 
 });
 
+//GET Swap Requests
+app.get('/api/swap-requests', (req, res) => {
+
+    fs.readFile(dbPath, 'utf8', (err, data) => {
+
+        if (err) {
+            return res.status(500).json({ error: "Error reading database" });
+        }
+
+        const db = JSON.parse(data);
+        res.json(db.swapRequests);
+
+    });
+
+});
+
+//POST Swap Request
+app.post('/api/swap-requests', (req, res) => {
+
+    const newRequest = req.body;
+
+    fs.readFile(dbPath, 'utf8', (err, data) => {
+
+        if (err) {
+            return res.status(500).json({ error: "Error reading database" });
+        }
+
+        const db = JSON.parse(data);
+
+        const requestWithId = {
+            id: Date.now().toString(),
+            ...newRequest
+        };
+
+        db.swapRequests.push(requestWithId);
+
+        fs.writeFile(dbPath, JSON.stringify(db, null, 2), (err) => {
+
+            if (err) {
+                return res.status(500).json({ error: "Error writing to database" });
+            }
+
+            res.status(201).json(requestWithId);
+
+        });
+
+    });
+
+});
+
 // DELETE Swap Request: This removes a swap request from db.json based on ID
 app.delete('/api/swap-requests/:id', (req, res) => {
 
