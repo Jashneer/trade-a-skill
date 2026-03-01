@@ -96,7 +96,7 @@ function FeatureList() {
         let mounted = true;
         const fetchFeatures = async () => {
             try {
-                const res = await fetch('http://localhost:3000/features');
+                const res = await fetch('/api/features');
                 if (!res.ok) throw new Error('Failed to fetch features');
                 const data = await res.json();
                 if (mounted) setFeatures(data || []);

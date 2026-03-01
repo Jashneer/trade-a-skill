@@ -36,7 +36,7 @@ const LoginPage = () => {
         (async () => {
             try {
                 const { email, password } = form;
-                const res = await fetch(`http://localhost:3000/users?email=${encodeURIComponent(email)}`);
+                const res = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
                 if (!res.ok) throw new Error('Failed to fetch user');
                 const users = await res.json();
                 const matched = users.find(u => u.email && u.email.toLowerCase() === (email || '').toLowerCase() && u.password === password);

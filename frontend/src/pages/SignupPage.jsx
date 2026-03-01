@@ -59,7 +59,7 @@ const SignupPage = () => {
 
         try {
             // Check if user exists
-            const checkRes = await fetch(`http://localhost:3000/users?email=${encodeURIComponent(email)}`);
+            const checkRes = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
             if (!checkRes.ok) throw new Error('Failed to check existing users');
             const existing = await checkRes.json();
             if (existing && existing.length > 0) {
@@ -68,7 +68,7 @@ const SignupPage = () => {
             }
 
             // POST new user
-            const postRes = await fetch('http://localhost:3000/users', {
+            const postRes = await fetch('/api/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newUser)

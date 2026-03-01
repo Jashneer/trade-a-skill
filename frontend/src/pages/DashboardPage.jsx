@@ -10,17 +10,17 @@ import { useAuth } from '../context/AuthContext';
 const loadAllSkills = async () => {
     try {
         // 1. GET static skills
-        const skillsRes = await fetch('http://localhost:3000/skills');
+        const skillsRes = await fetch('/api/skills');
         if (!skillsRes.ok) throw new Error('Failed to load skills');
         const staticSkills = await skillsRes.json();
 
         // 2. GET users
-        const usersRes = await fetch('http://localhost:3000/users');
+        const usersRes = await fetch('/api/users');
         if (!usersRes.ok) throw new Error('Failed to load users');
         const users = await usersRes.json();
 
         // 3. GET swapReviews
-        const reviewsRes = await fetch('http://localhost:3000/swapReviews');
+        const reviewsRes = await fetch('/api/swap-reviews');
         const allReviews = reviewsRes.ok ? await reviewsRes.json() : [];
 
         const allSkills = Array.isArray(staticSkills) ? [...staticSkills] : [];

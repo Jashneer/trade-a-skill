@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }) => {
                                 skillsToTeach: updatedUser.skillsToTeach,
                                 skillsToLearn: updatedUser.skillsToLearn
                             };
-                            await fetch(`http://localhost:3000/users/${encodeURIComponent(updatedUser.id)}`, {
+                            await fetch(`/api/users/${encodeURIComponent(updatedUser.id)}`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(patchBody)
