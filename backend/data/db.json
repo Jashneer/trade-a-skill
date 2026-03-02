@@ -158,6 +158,20 @@
       "dateJoined": "12/25/2025",
       "rating": 0,
       "trades": 0
+    },
+    {
+      "id": "1772437560925",
+      "firstName": "Palak",
+      "lastName": "Sharma",
+      "email": "palak@test.com",
+      "password": "123456"
+    },
+    {
+      "id": "1772438444634",
+      "firstName": "Khushi",
+      "lastName": "Vermaa",
+      "email": "KhushiVerma21.com",
+      "password": "1234567"
     }
   ],
   "swapRequests": [],

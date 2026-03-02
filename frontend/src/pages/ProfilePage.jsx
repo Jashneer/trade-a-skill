@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 import { getInitials } from '../components/SkillCard'; 
 import ReviewModal from '../components/UI/ReviewModal';
+import ExportButton from "../components/ExportButton"; // Ye line add kar
 
 // --- Helper Functions (Must be defined outside the component) ---
 
@@ -395,6 +396,7 @@ const ProfilePage = () => {
                             <button className="btn btn-primary" onClick={handleEditProfile} disabled={!isLoggedIn}>
                                 Edit Profile
                             </button>
+                            <ExportButton />
                             <button 
                                 className="btn btn-secondary" 
                                 onClick={() => handleAuth(isLoggedIn)}
