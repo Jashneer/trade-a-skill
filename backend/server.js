@@ -2,148 +2,163 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
+
+const logger = require('./middleware/logger');
+const errorHandler = require('./middleware/errorHandler');
+const connectDB = require('./config/db');
+const User = require('./models/User');
+const Skill = require('./models/Skill');
 
 const app = express();
-const PORT = 3000;
+
+// Concept 2 Setup for EJS 
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // Built-in Body-parser
+
+// Application-level middleware to log every request
+app.use(logger);
 
 const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 
-app.get('/api/features', (req, res) => {
+// Concept 2 - SSR Admin Route [cite: 166, 206]
+app.get('/admin', async (req, res) => {
+    const users = await User.find({}).sort({ createdAt: -1 }).lean();
+    const normalizedUsers = users.map((user) => {
+        const normalizedUser = {
+            ...user,
+            id: String(user._id),
+        };
+        delete normalizedUser._id;
+        return normalizedUser;
+    });
+
+    // Renders the admin.ejs file and passes user data
+    res.render('admin', { users: normalizedUsers });
+});
+
+app.get('/api/features', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // This sends the error to your errorHandler.js
         const db = JSON.parse(data);
         res.json(db.features || []);
     });
 });
 
-app.get('/api/skills', (req, res) => {
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Check if db.json is in backend/data/' });
-        }
-        const db = JSON.parse(data);
-        res.json(db.skills || []);
-    });
-});
-
-app.get('/api/users', (req, res) => {
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
-        const db = JSON.parse(data);
-        const users = db.users || [];
-        const email = (req.query.email || '').toString().toLowerCase().trim();
-
-        if (!email) {
-            return res.json(users);
-        }
-
-        const filteredUsers = users.filter(
-            user => (user.email || '').toString().toLowerCase() === email
-        );
-        res.json(filteredUsers);
-    });
-});
-
-app.post('/api/users', (req, res) => {
-    const newUser = req.body;
-
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
-
-        const db = JSON.parse(data);
-        const userWithId = {
-            id: Date.now().toString(),
-            ...newUser,
+app.get('/api/skills', async (req, res) => {
+    const skills = await Skill.find({}).sort({ createdAt: -1 }).lean();
+    const normalizedSkills = skills.map((skill) => {
+        const normalizedSkill = {
+            ...skill,
+            id: String(skill._id),
         };
-
-        db.users = db.users || [];
-        db.users.push(userWithId);
-
-        fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error writing to database' });
-            }
-
-            res.status(201).json(userWithId);
-        });
+        delete normalizedSkill._id;
+        return normalizedSkill;
     });
+
+    res.json(normalizedSkills);
 });
 
-app.patch('/api/users/:id', (req, res) => {
-    const userId = req.params.id;
-    const updates = req.body;
+app.get('/api/users', async (req, res) => {
+    const email = (req.query.email || '').toString().toLowerCase().trim();
+    const query = email ? { email } : {};
+    const users = await User.find(query).sort({ createdAt: -1 }).lean();
+    const normalizedUsers = users.map((user) => {
+        const normalizedUser = {
+            ...user,
+            id: String(user._id),
+        };
+        delete normalizedUser._id;
+        return normalizedUser;
+    });
 
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
+    res.json(normalizedUsers);
+});
+
+app.post('/api/users', async (req, res) => {
+    try {
+        const payload = { ...req.body };
+        delete payload.id;
+
+        if (!Array.isArray(payload.skillsToTeach)) payload.skillsToTeach = [];
+        if (!Array.isArray(payload.skillsToLearn)) payload.skillsToLearn = [];
+
+        const createdUser = await User.create(payload);
+        res.status(201).json(createdUser.toJSON());
+    } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(409).json({ message: 'Email already exists' });
         }
 
-        const db = JSON.parse(data);
-        const users = db.users || [];
-        const userIndex = users.findIndex(user => String(user.id) === String(userId));
+        if (error && (error.name === 'ValidationError' || error.name === 'StrictModeError')) {
+            return res.status(400).json({ message: error.message });
+        }
 
-        if (userIndex === -1) {
+        throw error;
+    }
+});
+
+app.patch('/api/users/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const updates = { ...req.body };
+        delete updates.id;
+
+        const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+            new: true,
+            runValidators: true,
+            context: 'query',
+        });
+
+        if (!updatedUser) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        users[userIndex] = {
-            ...users[userIndex],
-            ...updates,
-        };
+        res.json(updatedUser.toJSON());
+    } catch (error) {
+        if (error && error.name === 'CastError') {
+            return res.status(400).json({ message: 'Invalid user id' });
+        }
 
-        db.users = users;
+        if (error && (error.name === 'ValidationError' || error.name === 'StrictModeError')) {
+            return res.status(400).json({ message: error.message });
+        }
 
-        fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error writing to database' });
-            }
-
-            res.json(users[userIndex]);
-        });
-    });
+        throw error;
+    }
 });
 
-app.post('/api/activity-log', (req, res) => {
+app.post('/api/activity-log', (req, res, next) => {
     const logPath = path.join(__dirname, 'data', 'activity.txt');
     const logEntry = `Activity: ${JSON.stringify(req.body)}\n`;
 
     fs.appendFile(logPath, logEntry, (err) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error appending log file' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         res.json({ message: 'Activity logged successfully' });
     });
 });
 
-app.get('/api/swap-requests', (req, res) => {
+app.get('/api/swap-requests', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         res.json(db.swapRequests || []);
     });
 });
 
-app.post('/api/swap-requests', (req, res) => {
+app.post('/api/swap-requests', (req, res, next) => {
     const newRequest = req.body;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         const requestWithId = {
@@ -155,22 +170,18 @@ app.post('/api/swap-requests', (req, res) => {
         db.swapRequests.push(requestWithId);
 
         fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error writing to database' });
-            }
+            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
 
             res.status(201).json(requestWithId);
         });
     });
 });
 
-app.delete('/api/swap-requests/:id', (req, res) => {
+app.delete('/api/swap-requests/:id', (req, res, next) => {
     const requestId = req.params.id;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         db.swapRequests = (db.swapRequests || []).filter(
@@ -178,18 +189,16 @@ app.delete('/api/swap-requests/:id', (req, res) => {
         );
 
         fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error deleting request' });
-            }
+            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
 
             res.json({ message: 'Swap request deleted successfully' });
         });
     });
 });
 
-// --- MEMBER 4: Performance Expert - True Streaming ---
+// --- Performance Expert - True Streaming ---
 
-app.get('/api/export-history', (req, res) => {
+app.get('/api/export-history', (req, res, next) => {
     const format = req.query.format === 'csv' ? 'csv' : 'json';
     res.setHeader('Content-Disposition', `attachment; filename="TradeReport.${format}"`);
     res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/json');
@@ -205,27 +214,37 @@ app.get('/api/export-history', (req, res) => {
 });
 
 // Swap Reviews
-app.get('/api/swap-reviews', (req, res) => {
+app.get('/api/swap-reviews', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         res.json(db.swapReviews || []);
     });
 });
 
-// --- MEMBER 3: Static Serving ---
+// --- Static Serving ---
 
 app.use(express.static(frontendDistPath));
 
-app.get(/^\/(?!api).*/, (req, res) => {
+app.get(/^\/(?!api).*/, (req, res, next) => {
     res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log('==========================================');
-    console.log(`SERVER RUNNING: http://localhost:${PORT}`);
-    console.log('==========================================');
+// Concept 1 - Final Error-handling Middleware
+app.use(errorHandler);
+
+const startServer = async () => {
+    await connectDB();
+
+    app.listen(PORT, () => {
+        console.log('==========================================');
+        console.log(`SERVER RUNNING: http://localhost:${PORT}`);
+        console.log('==========================================');
+    });
+};
+
+startServer().catch((err) => {
+    console.error('Failed to start server:', err.message);
+    process.exit(1);
 });
