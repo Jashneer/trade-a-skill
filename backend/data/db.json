@@ -172,6 +172,41 @@
       "lastName": "Vermaa",
       "email": "KhushiVerma21.com",
       "password": "1234567"
+    },
+    {
+      "id": "1773031813916",
+      "firstName": "riya",
+      "lastName": "sharma",
+      "email": "riya@gmail.com",
+      "password": "riya12345678",
+      "bio": "frontend developer",
+      "skillsToTeach": [
+        "react",
+        "javascript"
+      ],
+      "skillsToLearn": [
+        "python"
+      ],
+      "dateJoined": "3/9/2026",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1777103761439",
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "johndoe@example.com",
+      "password": "John_12345678",
+      "bio": "CSE student",
+      "skillsToTeach": [
+        "javascript"
+      ],
+      "skillsToLearn": [
+        "python"
+      ],
+      "dateJoined": "4/25/2026",
+      "rating": 0,
+      "trades": 0
     }
   ],
   "swapRequests": [],

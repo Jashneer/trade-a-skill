@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TradeASkill Admin</title>
+</head>
+<body>
+    <h1>Admin Dashboard (Server-Side Rendered)</h1>
+    <p>This page demonstrates SSR by mixing HTML with server data.</p>
+
+    <h3>Registered Users:</h3>
+    <ul>
+        <% users.forEach(user => { %>
+            <li><%= user.firstName %> <%= user.lastName %> (<%= user.email %>)</li>
+        <% }) %>
+    </ul>
+</body>
+</html>

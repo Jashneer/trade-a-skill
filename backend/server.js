@@ -3,40 +3,56 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
+const logger = require('./middleware/logger');
+const errorHandler = require('./middleware/errorHandler');
+
 const app = express();
+
+// Concept 2 Setup for EJS 
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 const PORT = 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // Built-in Body-parser
+
+// Application-level middleware to log every request
+app.use(logger);
 
 const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 
-app.get('/api/features', (req, res) => {
+// Concept 2 - SSR Admin Route [cite: 166, 206]
+app.get('/admin', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Pass errors to your global handler
+        const db = JSON.parse(data);
+
+        // Renders the admin.ejs file and passes user data 
+        res.render('admin', { users: db.users || [] });
+    });
+});
+
+app.get('/api/features', (req, res, next) => {
+    fs.readFile(dbPath, 'utf8', (err, data) => {
+        if (err) return next(err); // This sends the error to your errorHandler.js
         const db = JSON.parse(data);
         res.json(db.features || []);
     });
 });
 
-app.get('/api/skills', (req, res) => {
+app.get('/api/skills', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Check if db.json is in backend/data/' });
-        }
+        if (err) return next(err); // This sends the error to your errorHandler.js
         const db = JSON.parse(data);
         res.json(db.skills || []);
     });
 });
 
-app.get('/api/users', (req, res) => {
+app.get('/api/users', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // This sends the error to your errorHandler.js
         const db = JSON.parse(data);
         const users = db.users || [];
         const email = (req.query.email || '').toString().toLowerCase().trim();
@@ -52,13 +68,11 @@ app.get('/api/users', (req, res) => {
     });
 });
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', (req, res, next) => {
     const newUser = req.body;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // This sends the error to your errorHandler.js
 
         const db = JSON.parse(data);
         const userWithId = {
@@ -70,23 +84,19 @@ app.post('/api/users', (req, res) => {
         db.users.push(userWithId);
 
         fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error writing to database' });
-            }
+            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
 
             res.status(201).json(userWithId);
         });
     });
 });
 
-app.patch('/api/users/:id', (req, res) => {
+app.patch('/api/users/:id', (req, res, next) => {
     const userId = req.params.id;
     const updates = req.body;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // This sends the error to your errorHandler.js
 
         const db = JSON.parse(data);
         const users = db.users || [];
@@ -104,46 +114,38 @@ app.patch('/api/users/:id', (req, res) => {
         db.users = users;
 
         fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error writing to database' });
-            }
+            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
 
             res.json(users[userIndex]);
         });
     });
 });
 
-app.post('/api/activity-log', (req, res) => {
+app.post('/api/activity-log', (req, res, next) => {
     const logPath = path.join(__dirname, 'data', 'activity.txt');
     const logEntry = `Activity: ${JSON.stringify(req.body)}\n`;
 
     fs.appendFile(logPath, logEntry, (err) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error appending log file' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         res.json({ message: 'Activity logged successfully' });
     });
 });
 
-app.get('/api/swap-requests', (req, res) => {
+app.get('/api/swap-requests', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         res.json(db.swapRequests || []);
     });
 });
 
-app.post('/api/swap-requests', (req, res) => {
+app.post('/api/swap-requests', (req, res, next) => {
     const newRequest = req.body;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         const requestWithId = {
@@ -155,22 +157,18 @@ app.post('/api/swap-requests', (req, res) => {
         db.swapRequests.push(requestWithId);
 
         fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error writing to database' });
-            }
+            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
 
             res.status(201).json(requestWithId);
         });
     });
 });
 
-app.delete('/api/swap-requests/:id', (req, res) => {
+app.delete('/api/swap-requests/:id', (req, res, next) => {
     const requestId = req.params.id;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         db.swapRequests = (db.swapRequests || []).filter(
@@ -178,18 +176,16 @@ app.delete('/api/swap-requests/:id', (req, res) => {
         );
 
         fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) {
-                return res.status(500).json({ error: 'Error deleting request' });
-            }
+            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
 
             res.json({ message: 'Swap request deleted successfully' });
         });
     });
 });
 
-// --- MEMBER 4: Performance Expert - True Streaming ---
+// --- Performance Expert - True Streaming ---
 
-app.get('/api/export-history', (req, res) => {
+app.get('/api/export-history', (req, res, next) => {
     const format = req.query.format === 'csv' ? 'csv' : 'json';
     res.setHeader('Content-Disposition', `attachment; filename="TradeReport.${format}"`);
     res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/json');
@@ -205,24 +201,25 @@ app.get('/api/export-history', (req, res) => {
 });
 
 // Swap Reviews
-app.get('/api/swap-reviews', (req, res) => {
+app.get('/api/swap-reviews', (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error reading database' });
-        }
+        if (err) return next(err); // Concept 1: Pass error to global handler
 
         const db = JSON.parse(data);
         res.json(db.swapReviews || []);
     });
 });
 
-// --- MEMBER 3: Static Serving ---
+// --- Static Serving ---
 
 app.use(express.static(frontendDistPath));
 
-app.get(/^\/(?!api).*/, (req, res) => {
+app.get(/^\/(?!api).*/, (req, res, next) => {
     res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
+
+// Concept 1 - Final Error-handling Middleware
+app.use(errorHandler);
 
 app.listen(PORT, () => {
     console.log('==========================================');
