@@ -2,9 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
 
 const logger = require('./middleware/logger');
 const errorHandler = require('./middleware/errorHandler');
+const connectDB = require('./config/db');
+const User = require('./models/User');
+const Skill = require('./models/Skill');
 
 const app = express();
 
@@ -12,7 +16,7 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json()); // Built-in Body-parser
@@ -24,14 +28,19 @@ const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 
 // Concept 2 - SSR Admin Route [cite: 166, 206]
-app.get('/admin', (req, res, next) => {
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // Pass errors to your global handler
-        const db = JSON.parse(data);
-
-        // Renders the admin.ejs file and passes user data 
-        res.render('admin', { users: db.users || [] });
+app.get('/admin', async (req, res) => {
+    const users = await User.find({}).sort({ createdAt: -1 }).lean();
+    const normalizedUsers = users.map((user) => {
+        const normalizedUser = {
+            ...user,
+            id: String(user._id),
+        };
+        delete normalizedUser._id;
+        return normalizedUser;
     });
+
+    // Renders the admin.ejs file and passes user data
+    res.render('admin', { users: normalizedUsers });
 });
 
 app.get('/api/features', (req, res, next) => {
@@ -42,83 +51,87 @@ app.get('/api/features', (req, res, next) => {
     });
 });
 
-app.get('/api/skills', (req, res, next) => {
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // This sends the error to your errorHandler.js
-        const db = JSON.parse(data);
-        res.json(db.skills || []);
+app.get('/api/skills', async (req, res) => {
+    const skills = await Skill.find({}).sort({ createdAt: -1 }).lean();
+    const normalizedSkills = skills.map((skill) => {
+        const normalizedSkill = {
+            ...skill,
+            id: String(skill._id),
+        };
+        delete normalizedSkill._id;
+        return normalizedSkill;
     });
+
+    res.json(normalizedSkills);
 });
 
-app.get('/api/users', (req, res, next) => {
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // This sends the error to your errorHandler.js
-        const db = JSON.parse(data);
-        const users = db.users || [];
-        const email = (req.query.email || '').toString().toLowerCase().trim();
+app.get('/api/users', async (req, res) => {
+    const email = (req.query.email || '').toString().toLowerCase().trim();
+    const query = email ? { email } : {};
+    const users = await User.find(query).sort({ createdAt: -1 }).lean();
+    const normalizedUsers = users.map((user) => {
+        const normalizedUser = {
+            ...user,
+            id: String(user._id),
+        };
+        delete normalizedUser._id;
+        return normalizedUser;
+    });
 
-        if (!email) {
-            return res.json(users);
+    res.json(normalizedUsers);
+});
+
+app.post('/api/users', async (req, res) => {
+    try {
+        const payload = { ...req.body };
+        delete payload.id;
+
+        if (!Array.isArray(payload.skillsToTeach)) payload.skillsToTeach = [];
+        if (!Array.isArray(payload.skillsToLearn)) payload.skillsToLearn = [];
+
+        const createdUser = await User.create(payload);
+        res.status(201).json(createdUser.toJSON());
+    } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(409).json({ message: 'Email already exists' });
         }
 
-        const filteredUsers = users.filter(
-            user => (user.email || '').toString().toLowerCase() === email
-        );
-        res.json(filteredUsers);
-    });
+        if (error && (error.name === 'ValidationError' || error.name === 'StrictModeError')) {
+            return res.status(400).json({ message: error.message });
+        }
+
+        throw error;
+    }
 });
 
-app.post('/api/users', (req, res, next) => {
-    const newUser = req.body;
+app.patch('/api/users/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const updates = { ...req.body };
+        delete updates.id;
 
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // This sends the error to your errorHandler.js
-
-        const db = JSON.parse(data);
-        const userWithId = {
-            id: Date.now().toString(),
-            ...newUser,
-        };
-
-        db.users = db.users || [];
-        db.users.push(userWithId);
-
-        fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
-
-            res.status(201).json(userWithId);
+        const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+            new: true,
+            runValidators: true,
+            context: 'query',
         });
-    });
-});
 
-app.patch('/api/users/:id', (req, res, next) => {
-    const userId = req.params.id;
-    const updates = req.body;
-
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // This sends the error to your errorHandler.js
-
-        const db = JSON.parse(data);
-        const users = db.users || [];
-        const userIndex = users.findIndex(user => String(user.id) === String(userId));
-
-        if (userIndex === -1) {
+        if (!updatedUser) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        users[userIndex] = {
-            ...users[userIndex],
-            ...updates,
-        };
+        res.json(updatedUser.toJSON());
+    } catch (error) {
+        if (error && error.name === 'CastError') {
+            return res.status(400).json({ message: 'Invalid user id' });
+        }
 
-        db.users = users;
+        if (error && (error.name === 'ValidationError' || error.name === 'StrictModeError')) {
+            return res.status(400).json({ message: error.message });
+        }
 
-        fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
-
-            res.json(users[userIndex]);
-        });
-    });
+        throw error;
+    }
 });
 
 app.post('/api/activity-log', (req, res, next) => {
@@ -221,8 +234,17 @@ app.get(/^\/(?!api).*/, (req, res, next) => {
 // Concept 1 - Final Error-handling Middleware
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-    console.log('==========================================');
-    console.log(`SERVER RUNNING: http://localhost:${PORT}`);
-    console.log('==========================================');
+const startServer = async () => {
+    await connectDB();
+
+    app.listen(PORT, () => {
+        console.log('==========================================');
+        console.log(`SERVER RUNNING: http://localhost:${PORT}`);
+        console.log('==========================================');
+    });
+};
+
+startServer().catch((err) => {
+    console.error('Failed to start server:', err.message);
+    process.exit(1);
 });
