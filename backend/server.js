@@ -1,4 +1,5 @@
 const express = require('express');
+const authVerify = require('./middleware/authVerify');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -6,7 +7,9 @@ require('dotenv').config();
 
 const logger = require('./middleware/logger');
 const errorHandler = require('./middleware/errorHandler');
+const { sessionConfig, attachCurrentUser } = require('./middleware/sessionHandler');
 const connectDB = require('./config/db');
+const authRoutes = require('./routes/auth');
 const User = require('./models/User');
 const Skill = require('./models/Skill');
 
@@ -20,6 +23,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json()); // Built-in Body-parser
+app.use(sessionConfig); // Session management middleware
+app.use(attachCurrentUser); // Attach current user from session if available
 
 // Application-level middleware to log every request
 app.use(logger);
@@ -27,8 +32,14 @@ app.use(logger);
 const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 
+app.use('/auth', authRoutes);
+
 // Concept 2 - SSR Admin Route [cite: 166, 206]
-app.get('/admin', async (req, res) => {
+app.get('/admin', authVerify,  async (req, res) => {
+    // Only admin can access
+if (req.user.email !== 'admin@gmail.com') {
+    return res.status(403).send('Access denied');
+}
     const users = await User.find({}).sort({ createdAt: -1 }).lean();
     const normalizedUsers = users.map((user) => {
         const normalizedUser = {
@@ -65,7 +76,7 @@ app.get('/api/skills', async (req, res) => {
     res.json(normalizedSkills);
 });
 
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', authVerify, async (req, res) => {
     const email = (req.query.email || '').toString().toLowerCase().trim();
     const query = email ? { email } : {};
     const users = await User.find(query).sort({ createdAt: -1 }).lean();
@@ -81,7 +92,7 @@ app.get('/api/users', async (req, res) => {
     res.json(normalizedUsers);
 });
 
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', authVerify, async (req, res) => {
     try {
         const payload = { ...req.body };
         delete payload.id;
@@ -104,10 +115,17 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
-app.patch('/api/users/:id', async (req, res) => {
+app.patch('/api/users/:id', authVerify, async (req, res) => {
     try {
         const userId = req.params.id;
-        const updates = { ...req.body };
+        if (req.user._id.toString() !== userId) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+const updates = { ...req.body };
+if (updates.password) {
+    return res.status(400).json({ message: 'Password update not allowed here' });
+}
         delete updates.id;
 
         const updatedUser = await User.findByIdAndUpdate(userId, updates, {
@@ -134,7 +152,7 @@ app.patch('/api/users/:id', async (req, res) => {
     }
 });
 
-app.post('/api/activity-log', (req, res, next) => {
+app.post('/api/activity-log', authVerify,(req, res, next) => {
     const logPath = path.join(__dirname, 'data', 'activity.txt');
     const logEntry = `Activity: ${JSON.stringify(req.body)}\n`;
 
@@ -145,7 +163,7 @@ app.post('/api/activity-log', (req, res, next) => {
     });
 });
 
-app.get('/api/swap-requests', (req, res, next) => {
+app.get('/api/swap-requests',  authVerify, (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
         if (err) return next(err); // Concept 1: Pass error to global handler
 
@@ -154,7 +172,7 @@ app.get('/api/swap-requests', (req, res, next) => {
     });
 });
 
-app.post('/api/swap-requests', (req, res, next) => {
+app.post('/api/swap-requests', authVerify, (req, res, next) => {
     const newRequest = req.body;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
@@ -177,7 +195,7 @@ app.post('/api/swap-requests', (req, res, next) => {
     });
 });
 
-app.delete('/api/swap-requests/:id', (req, res, next) => {
+app.delete('/api/swap-requests/:id', authVerify,(req, res, next) => {
     const requestId = req.params.id;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
@@ -198,23 +216,24 @@ app.delete('/api/swap-requests/:id', (req, res, next) => {
 
 // --- Performance Expert - True Streaming ---
 
-app.get('/api/export-history', (req, res, next) => {
+app.get('/api/export-history', authVerify, (req, res, next) => {
+
+    // Admin only
+    if (req.user.email !== 'admin@gmail.com') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
     const format = req.query.format === 'csv' ? 'csv' : 'json';
+
     res.setHeader('Content-Disposition', `attachment; filename="TradeReport.${format}"`);
     res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/json');
 
     const readStream = fs.createReadStream(dbPath);
-
     readStream.pipe(res);
-
-    readStream.on('error', (err) => {
-        console.error("Streaming error:", err);
-        if (!res.headersSent) res.status(500).send("Streaming failed");
-    });
 });
 
 // Swap Reviews
-app.get('/api/swap-reviews', (req, res, next) => {
+app.get('/api/swap-reviews', authVerify, (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
         if (err) return next(err); // Concept 1: Pass error to global handler
 
