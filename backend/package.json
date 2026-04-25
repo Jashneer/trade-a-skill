@@ -16,12 +16,17 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
+<<<<<<< HEAD
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+=======
     "dotenv": "^17.4.2",
     "ejs": "^5.0.2",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.5.0"
+>>>>>>> ce6f01ed6a1f8d842f85f08eda11a53821cc0469
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

@@ -174,15 +174,32 @@
       "password": "1234567"
     },
     {
-      "id": "1773031813916",
-      "firstName": "riya",
-      "lastName": "sharma",
-      "email": "riya@gmail.com",
-      "password": "riya12345678",
-      "bio": "frontend developer",
+      "id": "1772454209820",
+      "firstName": "Khushi",
+      "lastName": "Verma",
+      "email": "khushi0516.becse24@chitkara.edu.in",
+      "password": "12345678",
+      "bio": "hiii",
       "skillsToTeach": [
-        "react",
-        "javascript"
+        "swift"
+      ],
+      "skillsToLearn": [
+        "java",
+        "python"
+      ],
+      "dateJoined": "3/2/2026",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1773031920199",
+      "firstName": "KHUSHI",
+      "lastName": "VERMA",
+      "email": "khushi0516.becse24@gmail.com",
+      "password": "123456789",
+      "bio": "dgge",
+      "skillsToTeach": [
+        "java"
       ],
       "skillsToLearn": [
         "python"
@@ -192,14 +209,104 @@
       "trades": 0
     },
     {
-      "id": "1777103761439",
-      "firstName": "John",
-      "lastName": "Doe",
-      "email": "johndoe@example.com",
-      "password": "John_12345678",
-      "bio": "CSE student",
+      "id": "1777098665467",
+      "firstName": "KHUSHI",
+      "lastName": "VERMA",
+      "email": "abcxyz@gamil.com",
+      "password": "12345678901",
+      "bio": "Hiiiiiiiii",
       "skillsToTeach": [
-        "javascript"
+        "guitar",
+        "python"
+      ],
+      "skillsToLearn": [
+        "cooking",
+        "java"
+      ],
+      "dateJoined": "4/25/2026",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1777100325247",
+      "firstName": "Diksha",
+      "lastName": "Sharma",
+      "email": "diksha12@gmail.com",
+      "password": "12121212",
+      "bio": "Hello",
+      "skillsToTeach": [
+        "cooking",
+        "java"
+      ],
+      "skillsToLearn": [
+        "guitar",
+        "python"
+      ],
+      "dateJoined": "4/25/2026",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1777101080836",
+      "firstName": "Navya",
+      "lastName": "Agarwal",
+      "email": "navya@chitkara.edu.in",
+      "password": "987654321",
+      "bio": "Hellooo",
+      "skillsToTeach": [
+        "java"
+      ],
+      "skillsToLearn": [
+        "guitar"
+      ],
+      "dateJoined": "4/25/2026",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1777105027342",
+      "firstName": "User1",
+      "lastName": "User1",
+      "email": "User1@gmail.com",
+      "password": "User1@123456789",
+      "bio": "I want to learn Java",
+      "skillsToTeach": [
+        "python"
+      ],
+      "skillsToLearn": [
+        "java"
+      ],
+      "dateJoined": "4/25/2026",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1777105260537",
+      "firstName": "Divya",
+      "lastName": "Arora",
+      "email": "divya11@gmail.com",
+      "password": "11111111",
+      "bio": "I want to learn java",
+      "skillsToTeach": [
+        "python",
+        "swift"
+      ],
+      "skillsToLearn": [
+        "java"
+      ],
+      "dateJoined": "4/25/2026",
+      "rating": 0,
+      "trades": 0
+    },
+    {
+      "id": "1777105386384",
+      "firstName": "Astha",
+      "lastName": "Sharma",
+      "email": "Asth11@gmail.com",
+      "password": "111111111",
+      "bio": "I want to learn Python",
+      "skillsToTeach": [
+        "java"
       ],
       "skillsToLearn": [
         "python"
