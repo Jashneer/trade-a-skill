@@ -1,4 +1,5 @@
 const express = require('express');
+const authVerify = require('./middleware/authVerify');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -6,20 +7,13 @@ require('dotenv').config();
 
 const logger = require('./middleware/logger');
 const errorHandler = require('./middleware/errorHandler');
+const { sessionConfig, attachCurrentUser } = require('./middleware/sessionHandler');
 const connectDB = require('./config/db');
+const authRoutes = require('./routes/auth');
 const User = require('./models/User');
 const Skill = require('./models/Skill');
 
-//Socket+Auth 
-const http = require('http');
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-const passport = require('./config/passport');   // ← Member 4
-const authRoutes = require('./routes/auth');      // ← Member 4
-const JWT_SECRET = process.env.JWT_SECRET || 'tradeaskill_jwt_secret_2025';
-
 const app = express();
-   
 
 // Concept 2 Setup for EJS 
 app.set('view engine', 'ejs');
@@ -29,17 +23,23 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json()); // Built-in Body-parser
+app.use(sessionConfig); // Session management middleware
+app.use(attachCurrentUser); // Attach current user from session if available
 
 // Application-level middleware to log every request
 app.use(logger);
-app.use(passport.initialize());  
-app.use('/api/auth', authRoutes);  
 
 const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 
+app.use('/auth', authRoutes);
+
 // Concept 2 - SSR Admin Route [cite: 166, 206]
-app.get('/admin', async (req, res) => {
+app.get('/admin', authVerify,  async (req, res) => {
+    // Only admin can access
+if (req.user.email !== 'admin@gmail.com') {
+    return res.status(403).send('Access denied');
+}
     const users = await User.find({}).sort({ createdAt: -1 }).lean();
     const normalizedUsers = users.map((user) => {
         const normalizedUser = {
@@ -76,7 +76,7 @@ app.get('/api/skills', async (req, res) => {
     res.json(normalizedSkills);
 });
 
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', authVerify, async (req, res) => {
     const email = (req.query.email || '').toString().toLowerCase().trim();
     const query = email ? { email } : {};
     const users = await User.find(query).sort({ createdAt: -1 }).lean();
@@ -92,7 +92,7 @@ app.get('/api/users', async (req, res) => {
     res.json(normalizedUsers);
 });
 
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', authVerify, async (req, res) => {
     try {
         const payload = { ...req.body };
         delete payload.id;
@@ -115,12 +115,17 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
-
-
-app.patch('/api/users/:id', async (req, res) => {
+app.patch('/api/users/:id', authVerify, async (req, res) => {
     try {
         const userId = req.params.id;
-        const updates = { ...req.body };
+        if (req.user._id.toString() !== userId) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+const updates = { ...req.body };
+if (updates.password) {
+    return res.status(400).json({ message: 'Password update not allowed here' });
+}
         delete updates.id;
 
         const updatedUser = await User.findByIdAndUpdate(userId, updates, {
@@ -147,7 +152,7 @@ app.patch('/api/users/:id', async (req, res) => {
     }
 });
 
-app.post('/api/activity-log', (req, res, next) => {
+app.post('/api/activity-log', authVerify,(req, res, next) => {
     const logPath = path.join(__dirname, 'data', 'activity.txt');
     const logEntry = `Activity: ${JSON.stringify(req.body)}\n`;
 
@@ -158,7 +163,7 @@ app.post('/api/activity-log', (req, res, next) => {
     });
 });
 
-app.get('/api/swap-requests', (req, res, next) => {
+app.get('/api/swap-requests',  authVerify, (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
         if (err) return next(err); // Concept 1: Pass error to global handler
 
@@ -167,7 +172,7 @@ app.get('/api/swap-requests', (req, res, next) => {
     });
 });
 
-app.post('/api/swap-requests', (req, res, next) => {
+app.post('/api/swap-requests', authVerify, (req, res, next) => {
     const newRequest = req.body;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
@@ -190,7 +195,7 @@ app.post('/api/swap-requests', (req, res, next) => {
     });
 });
 
-app.delete('/api/swap-requests/:id', (req, res, next) => {
+app.delete('/api/swap-requests/:id', authVerify,(req, res, next) => {
     const requestId = req.params.id;
 
     fs.readFile(dbPath, 'utf8', (err, data) => {
@@ -211,23 +216,24 @@ app.delete('/api/swap-requests/:id', (req, res, next) => {
 
 // --- Performance Expert - True Streaming ---
 
-app.get('/api/export-history', (req, res, next) => {
+app.get('/api/export-history', authVerify, (req, res, next) => {
+
+    // Admin only
+    if (req.user.email !== 'admin@gmail.com') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
     const format = req.query.format === 'csv' ? 'csv' : 'json';
+
     res.setHeader('Content-Disposition', `attachment; filename="TradeReport.${format}"`);
     res.setHeader('Content-Type', format === 'csv' ? 'text/csv' : 'application/json');
 
     const readStream = fs.createReadStream(dbPath);
-
     readStream.pipe(res);
-
-    readStream.on('error', (err) => {
-        console.error("Streaming error:", err);
-        if (!res.headersSent) res.status(500).send("Streaming failed");
-    });
 });
 
 // Swap Reviews
-app.get('/api/swap-reviews', (req, res, next) => {
+app.get('/api/swap-reviews', authVerify, (req, res, next) => {
     fs.readFile(dbPath, 'utf8', (err, data) => {
         if (err) return next(err); // Concept 1: Pass error to global handler
 
@@ -235,12 +241,6 @@ app.get('/api/swap-reviews', (req, res, next) => {
         res.json(db.swapReviews || []);
     });
 });
-
-// ── Socket Status ─────────────────────────────────────────────────────────────
-app.get('/api/socket-status', (req, res) => {
-    res.json({ status: 'Socket.io running', onlineUsers: onlineUsers.size });
-});
-
 
 // --- Static Serving ---
 
@@ -253,103 +253,14 @@ app.get(/^\/(?!api).*/, (req, res, next) => {
 // Concept 1 - Final Error-handling Middleware
 app.use(errorHandler);
 
-const httpServer = http.createServer(app);
-const io = new Server(httpServer, {
-    cors: { origin: '*', methods: ['GET', 'POST'] },
-});
-
-// Online users map: userId → socketId
-const onlineUsers = new Map();
-
-// Socket.io JWT middleware
-io.use((socket, next) => {
-    try {
-        const raw = socket.handshake.auth?.token || '';
-        const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
-        if (token) {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            socket.userId = String(decoded.id);
-            socket.userEmail = decoded.email;
-        } else {
-            socket.userId = null;
-            socket.userEmail = 'guest';
-        }
-    } catch {
-        socket.userId = null;
-        socket.userEmail = 'guest';
-    }
-    next();
-});
- 
-io.on('connection', (socket) => {
-    console.log(`[Socket] Connected: ${socket.id} | ${socket.userEmail}`);
- 
-    if (socket.userId) {
-        onlineUsers.set(socket.userId, socket.id);
-        io.emit('online_count', { count: onlineUsers.size });
-    }
- 
-    // Learner sends swap request → notify teacher instantly
-    socket.on('swap_request_sent', (data) => {
-        const teacherSid = onlineUsers.get(String(data.teacherUserId));
-        if (teacherSid) {
-            io.to(teacherSid).emit('notification', {
-                type: 'NEW_SWAP_REQUEST',
-                message: `${data.learnerName} wants to learn "${data.skillRequested}" and offers "${data.skillOffered}"`,
-                timestamp: new Date().toISOString(),
-            });
-        }
-        socket.emit('swap_request_ack', { status: 'sent' });
-    });
- 
-    // Teacher updates swap status → notify learner
-    socket.on('swap_status_updated', (data) => {
-        const learnerSid = onlineUsers.get(String(data.learnerUserId));
-        if (learnerSid) {
-            io.to(learnerSid).emit('notification', {
-                type: 'SWAP_STATUS_UPDATE',
-                status: data.status,
-                message: data.status === 'APPROVED'
-                    ? `🎉 Your swap for "${data.skillTitle}" was APPROVED!`
-                    : `Your swap for "${data.skillTitle}" was declined.`,
-                timestamp: new Date().toISOString(),
-            });
-        }
-    });
- 
-    // Real-time chat rooms
-    socket.on('join_chat_room', ({ roomId }) => {
-        socket.join(roomId);
-        socket.to(roomId).emit('chat_event', { type: 'USER_JOINED', userEmail: socket.userEmail });
-    });
- 
-    socket.on('chat_message', ({ roomId, message, senderName }) => {
-        socket.to(roomId).emit('chat_message', {
-            senderName, message, timestamp: new Date().toISOString(),
-        });
-    });
- 
-    socket.on('typing', ({ roomId, senderName }) => {
-        socket.to(roomId).emit('typing', { senderName });
-    });
- 
-    socket.on('disconnect', () => {
-        if (socket.userId) {
-            onlineUsers.delete(socket.userId);
-            io.emit('online_count', { count: onlineUsers.size });
-        }
-        console.log(`[Socket] Disconnected: ${socket.id}`);
-    });
-});
-
 const startServer = async () => {
     await connectDB();
-    httpServer.listen(PORT, () => {
+
+    app.listen(PORT, () => {
         console.log('==========================================');
         console.log(`SERVER RUNNING: http://localhost:${PORT}`);
         console.log('==========================================');
     });
-   
 };
 
 startServer().catch((err) => {

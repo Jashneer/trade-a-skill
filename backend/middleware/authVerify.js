@@ -1,39 +1,45 @@
-// middleware/authVerify.js
-// Member 4 - Task 6 & 7: JWT Token Verification Middleware
-
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tradeaskill_jwt_secret_2025';
-
-/**
- * Middleware to verify JWT token from Authorization header.
- * Usage: app.get('/protected', authVerify, handler)
- *
- * How JWT works:
- *  1. User logs in → server signs a token with user ID + secret → returns token
- *  2. Client stores token (localStorage / cookie)
- *  3. Client sends token in every request: Authorization: Bearer <token>
- *  4. Server verifies signature → trusts the identity without hitting the DB every time
- */
-const authVerify = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ message: 'Access denied. No token provided.' });
-    }
-
-    const token = authHeader.split(' ')[1];
-
+const authVerify = async (req, res, next) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded; // { id, email, iat, exp }
+        if (req.user) {
+            return next();
+        }
+
+        if (req.session && req.session.userId) {
+            const sessionUser = await User.findById(req.session.userId).lean();
+            if (!sessionUser) {
+                return res.status(401).json({ message: 'Session invalid. Please log in again.' });
+            }
+            req.user = sessionUser;
+            return next();
+        }
+
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+        if (!token) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        const secret = process.env.JWT_SECRET || 'trade-a-skill-jwt-secret';
+        const payload = jwt.verify(token, secret);
+        const user = await User.findById(payload.sub).lean();
+
+        if (!user) {
+            return res.status(401).json({ message: 'Token is invalid or expired' });
+        }
+
+        req.user = user;
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
             return res.status(401).json({ message: 'Token expired. Please log in again.' });
         }
-        return res.status(403).json({ message: 'Invalid token.' });
+
+        next(error);
     }
 };
 
-module.exports = authVerify; 
+module.exports = authVerify;
