@@ -49,13 +49,25 @@ export const AuthProvider = ({ children }) => {
         setUser(fullUser);
         localStorage.setItem("currentUser", JSON.stringify(fullUser));
         localStorage.setItem("isLoggedIn", "true");
+        import('../socket-client').then(({ connectSocket }) => connectSocket());
+
+    
     };
 
     const logout = () => {
-        setUser(getInitialUser());
-        localStorage.removeItem("currentUser");
-        localStorage.setItem("isLoggedIn", "false");
-    };
+    setUser(getInitialUser());
+
+    // ✅ ADD THIS LINE (important)
+    localStorage.removeItem("jwtToken");
+
+    localStorage.removeItem("currentUser");
+    localStorage.setItem("isLoggedIn", "false");
+};
+    
+    
+    
+    
+    
 
     const updateProfile = (newProfileData) => {
         setUser(prev => {

@@ -10,7 +10,16 @@ const connectDB = require('./config/db');
 const User = require('./models/User');
 const Skill = require('./models/Skill');
 
+//Socket+Auth 
+const http = require('http');
+const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const passport = require('./config/passport');   // ← Member 4
+const authRoutes = require('./routes/auth');      // ← Member 4
+const JWT_SECRET = process.env.JWT_SECRET || 'tradeaskill_jwt_secret_2025';
+
 const app = express();
+   
 
 // Concept 2 Setup for EJS 
 app.set('view engine', 'ejs');
@@ -23,6 +32,8 @@ app.use(express.json()); // Built-in Body-parser
 
 // Application-level middleware to log every request
 app.use(logger);
+app.use(passport.initialize());  
+app.use('/api/auth', authRoutes);  
 
 const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
@@ -103,6 +114,8 @@ app.post('/api/users', async (req, res) => {
         throw error;
     }
 });
+
+
 
 app.patch('/api/users/:id', async (req, res) => {
     try {
@@ -223,6 +236,12 @@ app.get('/api/swap-reviews', (req, res, next) => {
     });
 });
 
+// ── Socket Status ─────────────────────────────────────────────────────────────
+app.get('/api/socket-status', (req, res) => {
+    res.json({ status: 'Socket.io running', onlineUsers: onlineUsers.size });
+});
+
+
 // --- Static Serving ---
 
 app.use(express.static(frontendDistPath));
@@ -234,14 +253,103 @@ app.get(/^\/(?!api).*/, (req, res, next) => {
 // Concept 1 - Final Error-handling Middleware
 app.use(errorHandler);
 
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+    cors: { origin: '*', methods: ['GET', 'POST'] },
+});
+
+// Online users map: userId → socketId
+const onlineUsers = new Map();
+
+// Socket.io JWT middleware
+io.use((socket, next) => {
+    try {
+        const raw = socket.handshake.auth?.token || '';
+        const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
+        if (token) {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            socket.userId = String(decoded.id);
+            socket.userEmail = decoded.email;
+        } else {
+            socket.userId = null;
+            socket.userEmail = 'guest';
+        }
+    } catch {
+        socket.userId = null;
+        socket.userEmail = 'guest';
+    }
+    next();
+});
+ 
+io.on('connection', (socket) => {
+    console.log(`[Socket] Connected: ${socket.id} | ${socket.userEmail}`);
+ 
+    if (socket.userId) {
+        onlineUsers.set(socket.userId, socket.id);
+        io.emit('online_count', { count: onlineUsers.size });
+    }
+ 
+    // Learner sends swap request → notify teacher instantly
+    socket.on('swap_request_sent', (data) => {
+        const teacherSid = onlineUsers.get(String(data.teacherUserId));
+        if (teacherSid) {
+            io.to(teacherSid).emit('notification', {
+                type: 'NEW_SWAP_REQUEST',
+                message: `${data.learnerName} wants to learn "${data.skillRequested}" and offers "${data.skillOffered}"`,
+                timestamp: new Date().toISOString(),
+            });
+        }
+        socket.emit('swap_request_ack', { status: 'sent' });
+    });
+ 
+    // Teacher updates swap status → notify learner
+    socket.on('swap_status_updated', (data) => {
+        const learnerSid = onlineUsers.get(String(data.learnerUserId));
+        if (learnerSid) {
+            io.to(learnerSid).emit('notification', {
+                type: 'SWAP_STATUS_UPDATE',
+                status: data.status,
+                message: data.status === 'APPROVED'
+                    ? `🎉 Your swap for "${data.skillTitle}" was APPROVED!`
+                    : `Your swap for "${data.skillTitle}" was declined.`,
+                timestamp: new Date().toISOString(),
+            });
+        }
+    });
+ 
+    // Real-time chat rooms
+    socket.on('join_chat_room', ({ roomId }) => {
+        socket.join(roomId);
+        socket.to(roomId).emit('chat_event', { type: 'USER_JOINED', userEmail: socket.userEmail });
+    });
+ 
+    socket.on('chat_message', ({ roomId, message, senderName }) => {
+        socket.to(roomId).emit('chat_message', {
+            senderName, message, timestamp: new Date().toISOString(),
+        });
+    });
+ 
+    socket.on('typing', ({ roomId, senderName }) => {
+        socket.to(roomId).emit('typing', { senderName });
+    });
+ 
+    socket.on('disconnect', () => {
+        if (socket.userId) {
+            onlineUsers.delete(socket.userId);
+            io.emit('online_count', { count: onlineUsers.size });
+        }
+        console.log(`[Socket] Disconnected: ${socket.id}`);
+    });
+});
+
 const startServer = async () => {
     await connectDB();
-
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
         console.log('==========================================');
         console.log(`SERVER RUNNING: http://localhost:${PORT}`);
         console.log('==========================================');
     });
+   
 };
 
 startServer().catch((err) => {

@@ -1,21 +1,24 @@
-// src/pages/SignupPage.jsx (FINAL STABLE VERSION - All GraphQL Removed)
-import * as React from 'react'; 
-import { useState, useEffect } from 'react'; 
+import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; 
-// REMOVED: import { useMutation, gql } from '@apollo/client';
-// REMOVED: import { SIGNUP_USER_MUTATION } from '../graphql/userMutations';
+import { useAuth } from '../context/AuthContext';
 
 const SignupPage = () => {
-    const navigate = useNavigate(); 
-    const { user, login } = useAuth(); 
-    
-    // State remains the same
+    const navigate = useNavigate();
+    const { user, login } = useAuth();
+
     const [formData, setFormData] = useState({
-        firstName: '', lastName: '', email: '', password: '', confirmPassword: '',
-        bio: '', skillsToTeach: '', skillsToLearn: '', terms: false
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        bio: '',
+        skillsToTeach: '',
+        skillsToLearn: '',
+        terms: false
     });
-    
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({
@@ -24,83 +27,90 @@ const SignupPage = () => {
         }));
     };
 
-    // Redirect user if already signed in
+    // Redirect if already logged in
     useEffect(() => {
-        if (user.isLoggedIn) {
-            alert("You are already signed in. Redirecting to your profile.");
+        if (user?.isLoggedIn) {
             navigate('/profile');
         }
-    }, [user.isLoggedIn, navigate]);
+    }, [user, navigate]);
 
+    // After successful signup
+    const handleLoginSuccess = (userData) => {
+        login(userData);
+        alert("Account created successfully!");
+        window.location.replace("/profile");
+    };
 
-    // Success handler that forces a full page refresh to stabilize AuthContext
-    const handleLoginSuccess = (user) => {
-        login(user); 
-        alert("Account Created Successfully! Reloading to your profile.");
-        setTimeout(() => {
-            window.location.replace("/profile");
-        }, 500); 
-    }
-    
-    // Local storage logic (The ONLY remaining data persistence logic)
-    const handleLocalSignup = async () => {
-        const { firstName, lastName, email, password, bio, skillsToTeach, skillsToLearn } = formData;
-
-        const normalize = (s) => s.split(",").map(skill => skill.trim().toLowerCase()).filter(Boolean);
-        const newUser = {
-            id: String(Date.now()),
-            firstName, lastName, email, password, bio,
-            skillsToTeach: normalize(skillsToTeach),
-            skillsToLearn: normalize(skillsToLearn),
-            dateJoined: new Date().toLocaleDateString(),
-            rating: 0,
-            trades: 0,
-        };
-
+    // ✅ FINAL SIGNUP FUNCTION (JWT BASED)
+    const handleSignup = async () => {
         try {
-            // Check if user exists
-            const checkRes = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
-            if (!checkRes.ok) throw new Error('Failed to check existing users');
-            const existing = await checkRes.json();
-            if (existing && existing.length > 0) {
-                alert('This email is already registered. Please use another email.');
-                return;
-            }
-
-            // POST new user
-            const postRes = await fetch('/api/users', {
+            const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newUser)
+                body: JSON.stringify({
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    email: formData.email,
+                    password: formData.password,
+                    bio: formData.bio,
+                    skillsToTeach: formData.skillsToTeach
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(Boolean),
+                    skillsToLearn: formData.skillsToLearn
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(Boolean)
+                })
             });
-            if (!postRes.ok) throw new Error('Failed to create user');
-            const created = await postRes.json();
-            handleLoginSuccess(created);
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(errText || 'Signup failed');
+            }
+
+            const data = await res.json();
+
+            // ✅ STORE JWT TOKEN (IMPORTANT)
+            if (data.token) {
+                localStorage.setItem('jwtToken', data.token);
+            }
+
+            // ✅ LOGIN USER
+            handleLoginSuccess(data.user);
+
         } catch (err) {
-            console.error('Signup error', err);
-            alert('Unable to reach server. Please try again later.');
+            console.error('Signup error:', err);
+            alert('Signup failed. Try again.');
         }
-    }
+    };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        
-        if (user.isLoggedIn) {
+        if (user?.isLoggedIn) {
             navigate('/profile');
             return;
         }
 
         const { password, confirmPassword, terms } = formData;
 
-        // Validation 
-        if (password.length < 8 || password !== confirmPassword || !terms) {
-             alert("Validation failed. Check password length (min 8), match, and terms.");
-             return;
+        if (password.length < 8) {
+            alert("Password must be at least 8 characters.");
+            return;
         }
-        
-        // Execute Signup using API-backed method
-        await handleLocalSignup();
+
+        if (password !== confirmPassword) {
+            alert("Passwords do not match.");
+            return;
+        }
+
+        if (!terms) {
+            alert("You must accept terms.");
+            return;
+        }
+
+        await handleSignup();
     };
 
     return (
@@ -113,61 +123,114 @@ const SignupPage = () => {
                     </div>
 
                     <form className="signup-form" onSubmit={handleSubmit}>
-                        {/* Form fields remain the same */}
+                        
                         <div className="form-row">
                             <div className="form-group">
-                                <label htmlFor="firstName">First Name</label>
-                                <input type="text" id="firstName" name="firstName" required minLength="2" placeholder="Enter your first name" value={formData.firstName} onChange={handleChange} />
+                                <label>First Name</label>
+                                <input
+                                    name="firstName"
+                                    required
+                                    value={formData.firstName}
+                                    onChange={handleChange}
+                                />
                             </div>
+
                             <div className="form-group">
-                                <label htmlFor="lastName">Last Name</label>
-                                <input type="text" id="lastName" name="lastName" required minLength="2" placeholder="Enter your last name" value={formData.lastName} onChange={handleChange} />
+                                <label>Last Name</label>
+                                <input
+                                    name="lastName"
+                                    required
+                                    value={formData.lastName}
+                                    onChange={handleChange}
+                                />
                             </div>
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="email">Email Address</label>
-                            <input type="email" id="email" name="email" required placeholder="Enter your email address" value={formData.email} onChange={handleChange} />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="password">Password</label>
-                            <input type="password" id="password" name="password" required minLength="8" placeholder="Create a strong password" value={formData.password} onChange={handleChange} />
-                            <div className="password-requirements"><small>Password must be at least 8 characters long</small></div>
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="confirmPassword">Confirm Password</label>
-                            <input type="password" id="confirmPassword" name="confirmPassword" required minLength="8" placeholder="Confirm your password" value={formData.confirmPassword} onChange={handleChange} />
+                            <label>Email</label>
+                            <input
+                                type="email"
+                                name="email"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
+                            />
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="bio">Tell us about yourself</label>
-                            <textarea id="bio" name="bio" rows="4" placeholder="Share a bit about your background..." value={formData.bio} onChange={handleChange}></textarea>
+                            <label>Password</label>
+                            <input
+                                type="password"
+                                name="password"
+                                required
+                                value={formData.password}
+                                onChange={handleChange}
+                            />
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="skillsToTeach">Skills You Can Teach</label>
-                            <input type="text" id="skillsToTeach" name="skillsToTeach" required placeholder="e.g., JavaScript, Guitar (separate with commas)" value={formData.skillsToTeach} onChange={handleChange} />
+                            <label>Confirm Password</label>
+                            <input
+                                type="password"
+                                name="confirmPassword"
+                                required
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                            />
                         </div>
+
                         <div className="form-group">
-                            <label htmlFor="skillsToLearn">Skills You Want to Learn</label>
-                            <input type="text" id="skillsToLearn" name="skillsToLearn" required placeholder="e.g., Python, Cooking (separate with commas)" value={formData.skillsToLearn} onChange={handleChange} />
+                            <label>Bio</label>
+                            <textarea
+                                name="bio"
+                                rows="3"
+                                value={formData.bio}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Skills You Can Teach</label>
+                            <input
+                                name="skillsToTeach"
+                                placeholder="e.g. JavaScript, Guitar"
+                                value={formData.skillsToTeach}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Skills You Want to Learn</label>
+                            <input
+                                name="skillsToLearn"
+                                placeholder="e.g. Python, Cooking"
+                                value={formData.skillsToLearn}
+                                onChange={handleChange}
+                            />
                         </div>
 
                         <div className="form-group checkbox-group">
-                            <label className="checkbox-label">
-                                <input type="checkbox" id="terms" name="terms" checked={formData.terms} onChange={handleChange} required />
-                                <span className="checkmark"></span>
-                                I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    name="terms"
+                                    checked={formData.terms}
+                                    onChange={handleChange}
+                                />
+                                I agree to Terms & Conditions
                             </label>
                         </div>
 
-                        <button type="submit" className="btn btn-primary btn-large btn-full">
+                        <button type="submit" className="btn btn-primary btn-full">
                             Create Account
                         </button>
 
                         <div className="signup-footer">
-                            <p>Already have an account? <Link to="/login">Sign In</Link></p>
+                            <p>
+                                Already have an account? <Link to="/login">Sign In</Link>
+                            </p>
                         </div>
+
                     </form>
                 </div>
             </div>

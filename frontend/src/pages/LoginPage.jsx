@@ -36,16 +36,32 @@ const LoginPage = () => {
         (async () => {
             try {
                 const { email, password } = form;
-                const res = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
-                if (!res.ok) throw new Error('Failed to fetch user');
-                const users = await res.json();
-                const matched = users.find(u => u.email && u.email.toLowerCase() === (email || '').toLowerCase() && u.password === password);
-                if (matched) {
-                    login(matched);
-                    navigate('/profile');
-                } else {
-                    alert('Invalid credentials.');
+
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert(data.message || 'Login failed');
+                    return;
                 }
+
+                // ✅ Save user in context
+                login(data.user);
+
+                // 🔥 SAVE JWT TOKEN (IMPORTANT)
+                if (data.token) {
+                    localStorage.setItem('jwtToken', data.token);
+                }
+
+                navigate('/profile');  
+                
             } catch (err) {
                 console.error('Login error', err);
                 alert('Unable to login — server may be unavailable.');
