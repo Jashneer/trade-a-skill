@@ -20,8 +20,12 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 const PORT = process.env.PORT || 3000;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+}));
 app.use(express.json()); // Built-in Body-parser
 app.use(sessionConfig); // Session management middleware
 app.use(attachCurrentUser); // Attach current user from session if available
@@ -32,14 +36,21 @@ app.use(logger);
 const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 
-app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // Concept 2 - SSR Admin Route [cite: 166, 206]
-app.get('/admin', authVerify,  async (req, res) => {
+app.get('/admin', async (req, res) => {
+    // Ensure user is attached from session
+    if (!req.user) {
+        return res.status(401).send('Authentication required');
+    }
+
     // Only admin can access
-if (req.user.email !== 'admin@gmail.com') {
-    return res.status(403).send('Access denied');
-}
+    const isAdminUser = req.user?.isAdmin || req.user?.email === ADMIN_EMAIL;
+    if (!isAdminUser) {
+        return res.status(403).send('Access denied');
+    }
+
     const users = await User.find({}).sort({ createdAt: -1 }).lean();
     const normalizedUsers = users.map((user) => {
         const normalizedUser = {
@@ -92,7 +103,7 @@ app.get('/api/users', authVerify, async (req, res) => {
     res.json(normalizedUsers);
 });
 
-app.post('/api/users', authVerify, async (req, res) => {
+app.post('/api/users', async (req, res) => {
     try {
         const payload = { ...req.body };
         delete payload.id;
@@ -101,6 +112,7 @@ app.post('/api/users', authVerify, async (req, res) => {
         if (!Array.isArray(payload.skillsToLearn)) payload.skillsToLearn = [];
 
         const createdUser = await User.create(payload);
+        req.session.userId = createdUser._id;
         res.status(201).json(createdUser.toJSON());
     } catch (error) {
         if (error && error.code === 11000) {
@@ -219,7 +231,8 @@ app.delete('/api/swap-requests/:id', authVerify,(req, res, next) => {
 app.get('/api/export-history', authVerify, (req, res, next) => {
 
     // Admin only
-    if (req.user.email !== 'admin@gmail.com') {
+    const isAdminUser = req.user?.isAdmin || req.user?.email === ADMIN_EMAIL;
+    if (!req.user || !isAdminUser) {
         return res.status(403).json({ message: 'Access denied' });
     }
 

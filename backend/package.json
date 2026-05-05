@@ -7,18 +7,22 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "db:check": "node scripts/checkMongoConnection.js",
-    "db:migrate": "node scripts/migrateJsonToMongo.js"
+    "db:migrate": "node scripts/migrateJsonToMongo.js",
+    "admin:reset-password": "node scripts/resetAdminPassword.js",
+    "user:delete": "node scripts/deleteUserByEmail.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "axios": "^1.15.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "ejs": "^5.0.2",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.5.0",
     "passport": "^0.7.0",

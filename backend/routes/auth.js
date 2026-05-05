@@ -49,6 +49,7 @@ router.post('/signup', async (req, res, next) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 12);
+        const isAdmin = normalizedEmail === (process.env.ADMIN_EMAIL || 'admin@gmail.com');
         const createdUser = await User.create({
             firstName,
             lastName,
@@ -57,6 +58,7 @@ router.post('/signup', async (req, res, next) => {
             bio,
             skillsToTeach,
             skillsToLearn,
+            isAdmin,
         });
 
         req.session.userId = createdUser._id.toString();

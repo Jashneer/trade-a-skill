@@ -2,7 +2,6 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
 const SignupPage = () => {
     const navigate = useNavigate();
     const { user, login } = useAuth();
@@ -35,53 +34,58 @@ const SignupPage = () => {
     }, [user, navigate]);
 
     // After successful signup
-    const handleLoginSuccess = (userData) => {
+    const handleLoginSuccess = (userData, token) => {
         login(userData);
-        alert("Account created successfully!");
-        window.location.replace("/profile");
+        if (token) {
+            localStorage.setItem('jwtToken', token);
+        }
+        alert('Account created successfully!');
+        window.location.replace('/profile');
     };
 
-    // ✅ FINAL SIGNUP FUNCTION (JWT BASED)
+    // ✅ SIGNUP FUNCTION
     const handleSignup = async () => {
         try {
-            const res = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    password: formData.password,
-                    bio: formData.bio,
-                    skillsToTeach: formData.skillsToTeach
-                        .split(',')
-                        .map(s => s.trim())
-                        .filter(Boolean),
-                    skillsToLearn: formData.skillsToLearn
-                        .split(',')
-                        .map(s => s.trim())
-                        .filter(Boolean)
-                })
-            });
+            const payload = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                password: formData.password,
+                bio: formData.bio,
+                skillsToTeach: formData.skillsToTeach
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                skillsToLearn: formData.skillsToLearn
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+            };
 
-            if (!res.ok) {
-                const errText = await res.text();
-                throw new Error(errText || 'Signup failed');
-            }
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
 
             const data = await res.json();
 
-            // ✅ STORE JWT TOKEN (IMPORTANT)
-            if (data.token) {
-                localStorage.setItem('jwtToken', data.token);
+            if (!res.ok) {
+                throw new Error(data.message || `Signup failed (${res.status})`);
+            }
+
+            if (!data || !data.user) {
+                throw new Error('Signup failed: invalid response from server');
             }
 
             // ✅ LOGIN USER
-            handleLoginSuccess(data.user);
-
+            handleLoginSuccess(data.user, data.token);
         } catch (err) {
             console.error('Signup error:', err);
-            alert('Signup failed. Try again.');
+            alert(`Signup failed: ${err.message}`);
         }
     };
 
