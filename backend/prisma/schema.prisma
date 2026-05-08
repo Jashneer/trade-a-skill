@@ -1,0 +1,178 @@
+// ============================================================
+// Trade-a-Skill — Prisma Schema (PostgreSQL)
+// ============================================================
+// This file defines ALL the database tables for the project.
+// Think of each "model" as a TABLE in your PostgreSQL database.
+// Think of each field as a COLUMN in that table.
+// ============================================================
+
+// --- Generator: tells Prisma to generate a JavaScript client ---
+// Member 2 will use this client to talk to the database.
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+// --- Datasource: tells Prisma which database to connect to ---
+// The actual URL comes from prisma.config.ts → process.env.DATABASE_URL
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS — Fixed sets of allowed values (like a dropdown menu)
+// ============================================================
+
+// What category does a skill belong to?
+// In Mongoose this was: enum: ['technology', 'language', 'arts', 'business', 'user']
+enum SkillCategory {
+  technology
+  language
+  arts
+  business
+  user
+}
+
+// What difficulty level is the skill?
+// In Mongoose this was: enum: ['beginner', 'intermediate', 'advanced', 'flexible']
+enum SkillLevel {
+  beginner
+  intermediate
+  advanced
+  flexible
+}
+
+// What's the status of a swap request?
+// In Mongoose this was: enum: ['pending', 'accepted', 'rejected']
+enum SwapStatus {
+  pending
+  accepted
+  rejected
+}
+
+// ============================================================
+// USER MODEL — Represents a registered user
+// ============================================================
+// Translated from: backend/models/User.js (Mongoose)
+//
+// Key differences from MongoDB:
+//   - "id" is an auto-incrementing integer (not MongoDB's _id string)
+//   - "skillsToTeach" and "skillsToLearn" use PostgreSQL native arrays
+//   - Timestamps are native DateTime, not strings
+//   - "@@map" tells Prisma to name the actual table "users" (lowercase)
+// ============================================================
+
+model User {
+  id        Int      @id @default(autoincrement()) // Auto-generated unique ID (1, 2, 3...)
+  
+  // --- Personal Info ---
+  firstName String   @db.VarChar(50)    // Max 50 chars, same as Mongoose
+  lastName  String   @db.VarChar(50)    // Max 50 chars
+  email     String   @unique            // Must be unique (like Mongoose's unique: true)
+  password  String                       // Hashed password (min length checked in app code)
+  bio       String   @default("")  @db.VarChar(500) // Optional bio, max 500 chars
+  
+  // --- Skills (stored as text arrays in PostgreSQL) ---
+  skillsToTeach String[] @default([])   // e.g., ["JavaScript", "Python"]
+  skillsToLearn String[] @default([])   // e.g., ["Guitar", "Spanish"]
+  
+  // --- Stats ---
+  dateJoined String   @default("")      // Kept as String to match your existing format
+  rating     Float    @default(0)       // 0-5 rating (Float allows 4.5 etc.)
+  trades     Int      @default(0)       // Number of completed trades
+  
+  // --- Admin ---
+  isAdmin    Boolean  @default(false)   // Only true for admin users
+  
+  // --- Timestamps (auto-managed by Prisma) ---
+  createdAt  DateTime @default(now())   // When the row was created
+  updatedAt  DateTime @updatedAt        // Auto-updates on every change
+
+  // --- Relations ---
+  // A user can teach many skills (one-to-many relationship)
+  skills          Skill[]         @relation("SkillTeacher")
+  
+  // A user can send many swap requests
+  sentRequests     SwapRequest[]  @relation("SwapFromUser")
+  
+  // A user can receive many swap requests
+  receivedRequests SwapRequest[]  @relation("SwapToUser")
+
+  // Name the actual database table "users" (lowercase, plural)
+  @@map("users")
+}
+
+// ============================================================
+// SKILL MODEL — Represents a skill listing
+// ============================================================
+// Translated from: backend/models/Skill.js (Mongoose)
+//
+// Key difference from MongoDB:
+//   - In MongoDB, "teacher" was an EMBEDDED object inside the Skill document
+//   - In PostgreSQL, we use a RELATION (foreign key) to link to the User table
+//   - We still keep teacherName, teacherRating, teacherTrades as denormalized
+//     fields for quick access (so you don't always need to JOIN the User table)
+// ============================================================
+
+model Skill {
+  id          Int           @id @default(autoincrement())
+  
+  // --- Skill Info ---
+  title       String        @db.VarChar(120)   // Max 120 chars
+  description String        @db.VarChar(1000)  // Max 1000 chars
+  category    SkillCategory                     // Uses the enum above (technology, language, etc.)
+  level       SkillLevel                        // Uses the enum above (beginner, intermediate, etc.)
+  duration    String        @db.VarChar(60)     // e.g., "2 weeks", "1 month"
+  
+  // --- Teacher Info (denormalized from User for quick reads) ---
+  // These are copies of the teacher's data at the time of listing.
+  // The relation below links to the actual User record.
+  teacherName           String  @db.VarChar(100)  // Teacher's display name
+  teacherRating         Float   @default(0)        // Teacher's rating (0-5)
+  teacherCompletedTrades Int    @default(0)         // Teacher's trade count
+  
+  // --- Foreign Key: links this skill to a User ---
+  // This replaces MongoDB's embedded teacher object with a proper relation
+  teacherId   Int                                  // The ID of the user who teaches this
+  teacher     User     @relation("SkillTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  
+  // --- Timestamps ---
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("skills")
+}
+
+// ============================================================
+// SWAP REQUEST MODEL — Represents a trade request between users
+// ============================================================
+// Translated from: backend/models/swapRequest.js (Mongoose)
+//
+// In MongoDB: fromUser and toUser were ObjectId references.
+// In PostgreSQL: they are integer foreign keys pointing to the users table.
+// ============================================================
+
+model SwapRequest {
+  id             Int        @id @default(autoincrement())
+  
+  // --- Who is requesting? ---
+  fromUserId     Int                              // The user sending the request
+  fromUser       User       @relation("SwapFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  
+  // --- Who is receiving? ---
+  toUserId       Int                              // The user receiving the request
+  toUser         User       @relation("SwapToUser", fields: [toUserId], references: [id], onDelete: Cascade)
+  
+  // --- What skills are being traded? ---
+  skillOffered   String                           // What the sender is offering
+  skillRequested String                           // What the sender wants in return
+  
+  // --- Status ---
+  status         SwapStatus @default(pending)     // pending → accepted/rejected
+  
+  // --- Timestamps ---
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@map("swap_requests")
+}
