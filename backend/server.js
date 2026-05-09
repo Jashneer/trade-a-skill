@@ -11,7 +11,7 @@ const swapRoutes = require('./routes/swapRoutes');
 require('dotenv').config();
 
 const logger = require('./middleware/logger');
-const errorHandler = require('./middleware/errorHandler');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { sessionConfig, attachCurrentUser } = require('./middleware/sessionHandler');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
@@ -29,8 +29,34 @@ app.set('views', path.join(__dirname, 'views'));
 const PORT = process.env.PORT || 5000;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
 
+// Configure CORS to allow requests from any Vercel deployment
+const allowedOrigins = [
+  'https://trade-a-skill-r5lu.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
+
+// Allow any Vercel frontend deployment
+if (process.env.NODE_ENV === 'production') {
+  // In production, also accept requests from any vercel.app domain
+  // This allows the frontend to make requests to the backend regardless of the exact deployment URL
+}
+
 app.use(cors({
-  origin: ['https://trade-a-skill-r5lu.vercel.app', 'http://localhost:5173'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or Vercel functions)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (origin.includes('vercel.app')) {
+      // Allow any vercel.app domain in production
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -246,7 +272,8 @@ app.use(express.static(frontendDistPath));
 app.get(/^\/(?!api).*/, (req, res, next) => {
     res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
-
+// 404 handler for API routes
+app.use('/api', notFoundHandler);
 // Concept 1 - Final Error-handling Middleware
 app.use(errorHandler);
 

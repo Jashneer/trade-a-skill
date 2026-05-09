@@ -27,6 +27,8 @@ const buildSafeUser = (userDoc) => {
 
 router.post('/signup', async (req, res, next) => {
     try {
+        console.log('[AUTH] Signup request received:', { email: req.body.email });
+        
         const {
             firstName,
             lastName,
@@ -38,6 +40,7 @@ router.post('/signup', async (req, res, next) => {
         } = req.body;
 
         if (!firstName || !lastName || !email || !password) {
+            console.log('[AUTH] Signup validation failed - missing fields');
             return res.status(400).json({ message: 'Please provide firstName, lastName, email, and password.' });
         }
 
@@ -45,6 +48,7 @@ router.post('/signup', async (req, res, next) => {
         const existingUser = await User.findOne({ email: normalizedEmail });
 
         if (existingUser) {
+            console.log('[AUTH] Signup failed - email already exists:', normalizedEmail);
             return res.status(409).json({ message: 'Email already exists' });
         }
 
@@ -63,11 +67,15 @@ router.post('/signup', async (req, res, next) => {
 
         req.session.userId = createdUser._id.toString();
         const token = createToken(createdUser);
+        
+        console.log('[AUTH] Signup successful for:', normalizedEmail);
         res.status(201).json({
             token,
             user: buildSafeUser(createdUser),
         });
     } catch (error) {
+        console.error('[AUTH] Signup error:', error.message);
+        
         if (error && (error.name === 'ValidationError' || error.name === 'StrictModeError')) {
             return res.status(400).json({ message: error.message });
         }

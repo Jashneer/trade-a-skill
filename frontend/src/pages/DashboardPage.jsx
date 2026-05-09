@@ -7,10 +7,12 @@ import { useAuth } from '../context/AuthContext';
 
 // --- Helper Function to Load and Transform User Skills ---
 // loadAllSkills will fetch from the JSON Server and merge static skills + user-submitted skills
+import { getApiEndpoint } from '../config/api';
+
 const loadAllSkills = async () => {
     try {
         // 1. GET static skills
-        const skillsRes = await fetch('/api/skills');
+        const skillsRes = await fetch(getApiEndpoint('/api/skills'));
         if (!skillsRes.ok) throw new Error('Failed to load skills');
         const skillsData = await skillsRes.json();
 
@@ -19,7 +21,7 @@ const staticSkills = Array.isArray(skillsData)
     : skillsData.data || [];
 
         // 2. GET users
-        const usersRes = await fetch('/api/users');
+        const usersRes = await fetch(getApiEndpoint('/api/users'));
         if (!usersRes.ok) throw new Error('Failed to load users');
         const usersData = await usersRes.json();
 
@@ -31,7 +33,7 @@ const users = Array.isArray(usersData)
         let allReviews = [];
 
 try {
-    const reviewsRes = await fetch('/api/swap-reviews');
+    const reviewsRes = await fetch(getApiEndpoint('/api/swap-reviews'));
 
     if (reviewsRes.ok) {
         allReviews = await reviewsRes.json();

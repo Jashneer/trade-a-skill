@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getInitials } from '../components/SkillCard'; 
 import ReviewModal from '../components/UI/ReviewModal';
 import ExportButton from "../components/ExportButton"; // Ye line add kar
+import { getApiEndpoint } from '../config/api';
 
 // --- Helper Functions (Must be defined outside the component) ---
 
@@ -373,7 +374,7 @@ const ProfilePage = () => {
             const formData = new FormData();
             formData.append('profileImage', file);
 
-            const res = await fetch('/api/upload/profile-image', {
+            const res = await fetch(getApiEndpoint('/api/upload/profile-image'), {
                 method: 'POST',
                 headers: token ? { 'Authorization': 'Bearer ' + token } : {},
                 body: formData,

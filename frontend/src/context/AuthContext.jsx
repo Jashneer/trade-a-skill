@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { createContext, useState, useContext, useEffect } from 'react';
 import { connectSocket } from '../socket-client';
+import { getApiEndpoint } from '../config/api';
 
 // 1. Create the Context
 const AuthContext = createContext(null);
@@ -111,7 +112,7 @@ export const AuthProvider = ({ children }) => {
                                 skillsToTeach: updatedUser.skillsToTeach,
                                 skillsToLearn: updatedUser.skillsToLearn
                             };
-                            await fetch(`/api/users/${encodeURIComponent(updatedUser.id)}`, {
+                            await fetch(getApiEndpoint(`/api/users/${encodeURIComponent(updatedUser.id)}`), {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(patchBody)

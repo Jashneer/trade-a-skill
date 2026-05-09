@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiEndpoint } from '../config/api';
 const SignupPage = () => {
     const navigate = useNavigate();
     const { user, login } = useAuth();
@@ -79,7 +80,7 @@ const SignupPage = () => {
                     .filter(Boolean),
             };
 
-            const res = await fetch('/api/auth/signup', {
+            const res = await fetch(getApiEndpoint('/api/auth/signup'), {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -103,7 +104,7 @@ const SignupPage = () => {
                 try {
                     const uploadForm = new FormData();
                     uploadForm.append('profileImage', profilePic);
-                    const uploadRes = await fetch('/api/upload/profile-image', {
+                    const uploadRes = await fetch(getApiEndpoint('/api/upload/profile-image'), {
                         method: 'POST',
                         headers: { 'Authorization': 'Bearer ' + data.token },
                         body: uploadForm,

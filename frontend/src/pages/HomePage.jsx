@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 // import { MOCK_DATA } from '../data/mockData';
 import { useState, useEffect } from 'react';
 import FeatureCard from '../components/FeatureCard';
+import { getApiEndpoint } from '../config/api';
 
 const HomePage = () => {
     // Scroll function (replaces JS scrollIntoView)
@@ -96,7 +97,7 @@ function FeatureList() {
         let mounted = true;
         const fetchFeatures = async () => {
             try {
-                const res = await fetch('/api/features');
+                const res = await fetch(getApiEndpoint('/api/features'));
                 if (!res.ok) throw new Error('Failed to fetch features');
                 const data = await res.json();
                 if (mounted) setFeatures(data || []);
