@@ -18,6 +18,26 @@ const SignupPage = () => {
         terms: false
     });
 
+    // Member 3: Profile picture state
+    const [profilePic, setProfilePic] = useState(null);
+    const [profilePicPreview, setProfilePicPreview] = useState(null);
+
+    const handleProfilePicChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image (JPEG, PNG, GIF, or WebP)');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image must be under 5MB');
+            return;
+        }
+        setProfilePic(file);
+        setProfilePicPreview(URL.createObjectURL(file));
+    };
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({
@@ -35,10 +55,7 @@ const SignupPage = () => {
 
     // After successful signup
     const handleLoginSuccess = (userData, token) => {
-        login(userData);
-        if (token) {
-            localStorage.setItem('jwtToken', token);
-        }
+        login(userData, token);
         alert('Account created successfully!');
         window.location.replace('/profile');
     };
@@ -79,6 +96,25 @@ const SignupPage = () => {
 
             if (!data || !data.user) {
                 throw new Error('Signup failed: invalid response from server');
+            }
+
+            // Member 3: Upload profile picture if selected
+            if (profilePic && data.token) {
+                try {
+                    const uploadForm = new FormData();
+                    uploadForm.append('profileImage', profilePic);
+                    const uploadRes = await fetch('/api/upload/profile-image', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + data.token },
+                        body: uploadForm,
+                    });
+                    const uploadData = await uploadRes.json();
+                    if (uploadRes.ok && uploadData.success) {
+                        data.user.profileImage = uploadData.data.imageUrl;
+                    }
+                } catch (uploadErr) {
+                    console.warn('Profile pic upload failed, continuing signup:', uploadErr);
+                }
             }
 
             // ✅ LOGIN USER
@@ -181,6 +217,33 @@ const SignupPage = () => {
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
                             />
+                        </div>
+
+                        {/* Member 3: Profile Picture Upload */}
+                        <div className="form-group">
+                            <label>Profile Picture (optional)</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '8px' }}>
+                                <div style={{
+                                    width: '72px', height: '72px', borderRadius: '50%',
+                                    background: profilePicPreview ? 'none' : 'var(--bg-secondary, #f0f0f0)',
+                                    border: '2px dashed var(--border-color, #ccc)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    overflow: 'hidden', cursor: 'pointer', flexShrink: 0
+                                }} onClick={() => document.getElementById('signup-pfp-input').click()}>
+                                    {profilePicPreview ? (
+                                        <img src={profilePicPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <span style={{ fontSize: '24px' }}>📷</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <button type="button" className="btn btn-secondary btn-small" onClick={() => document.getElementById('signup-pfp-input').click()}>
+                                        {profilePic ? 'Change Photo' : 'Choose Photo'}
+                                    </button>
+                                    {profilePic && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{profilePic.name}</p>}
+                                </div>
+                                <input type="file" id="signup-pfp-input" accept="image/jpeg,image/png,image/gif,image/webp" style={{ display: 'none' }} onChange={handleProfilePicChange} />
+                            </div>
                         </div>
 
                         <div className="form-group">

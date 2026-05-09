@@ -129,6 +129,9 @@ const ProfilePage = () => {
     // Review modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentSwapToRate, setCurrentSwapToRate] = useState(null);
+    // Profile image upload state (Member 3)
+    const [profileImage, setProfileImage] = useState(user.profileImage || '');
+    const [uploadingImage, setUploadingImage] = useState(false);
     
     // Destructure user properties
     const { 
@@ -348,6 +351,50 @@ const ProfilePage = () => {
     }, []);
 
 
+    // --- Profile Image Upload Handler (Member 3) ---
+    const handleProfileImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image must be under 5MB');
+            return;
+        }
+
+        setUploadingImage(true);
+        try {
+            const token = localStorage.getItem('jwtToken');
+            const formData = new FormData();
+            formData.append('profileImage', file);
+
+            const res = await fetch('/api/upload/profile-image', {
+                method: 'POST',
+                headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setProfileImage(data.data.imageUrl);
+                updateProfile({ profileImage: data.data.imageUrl });
+                alert('Profile image updated!');
+            } else {
+                alert(data.message || 'Upload failed');
+            }
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('Failed to upload image. Please try again.');
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
     // --- Skill Tag Sub-Component ---
     const SkillTag = ({ skill, type }) => (
         <span className="skill-tag">
@@ -366,9 +413,19 @@ const ProfilePage = () => {
                     {/* Profile Header */}
                     <section className="profile-header">
                         <div className="profile-avatar">
-                            <div className="avatar-circle">
-                                {getInitials(`${firstName} ${lastName}`)}
+                            <div className="avatar-circle" style={{ cursor: isLoggedIn ? 'pointer' : 'default', position: 'relative', overflow: 'hidden' }} onClick={() => isLoggedIn && document.getElementById('profile-image-input').click()} title={isLoggedIn ? 'Click to change profile picture' : ''}>
+                                {profileImage ? (
+                                    <img src={profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                                ) : (
+                                    getInitials(`${firstName} ${lastName}`)
+                                )}
+                                {isLoggedIn && (
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '11px', textAlign: 'center', padding: '4px 0' }}>
+                                        {uploadingImage ? '⏳' : '📷'}
+                                    </div>
+                                )}
                             </div>
+                            <input type="file" id="profile-image-input" accept="image/jpeg,image/png,image/gif,image/webp" style={{ display: 'none' }} onChange={handleProfileImageUpload} />
                         </div>
 
                         <div className="profile-info">

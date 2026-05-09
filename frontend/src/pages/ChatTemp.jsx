@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import socket, { connectSocket, joinChatRoom, sendChatMessage, normalizeRoomId } from '../socket-client';
 
 const getSenderName = (user) => user?.firstName || 'You';
 
@@ -53,62 +54,91 @@ const ChatTemp = () => {
 
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState(''); 
-    const [isInitialGreetingSent, setIsInitialGreetingSent] = useState(false); 
-    const [isSchedulingConfirmed, setIsSchedulingConfirmed] = useState(false);
-    const lastRepliedMessageId = useRef(null);
+    const [isConnected, setIsConnected] = useState(false);
+
+   const roomId = useMemo(() => {
+    const currentUser =
+        `${user?.firstName || ""} ${user?.lastName || ""}`
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "-");
+
+    const receiverUser =
+        decodeURIComponent(teacherId || "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "-");
+
+    const skill =
+        skillTitle
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "-");
+
+    // Combine BOTH users
+    const participants = [currentUser, receiverUser].sort();
+
+    const room = `${participants[0]}_${participants[1]}_${skill}`;
+
+    console.log("CURRENT USER:", currentUser);
+    console.log("RECEIVER USER:", receiverUser);
+    console.log("FINAL ROOM:", room);
+
+    return room;
+}, [teacherId, skillTitle, user]);
+    
+
+useEffect(() => {
+    setMessages([]);
+}, [teacherId, skillTitle]);
 
     useEffect(() => {
-        setMessages([]);
-        setIsInitialGreetingSent(false);
-        setIsSchedulingConfirmed(false);
-        lastRepliedMessageId.current = null;
-    }, [teacherId, skillTitle]);
+        if (!isLoggedIn) return;
 
-    useEffect(() => {
-        const lastMessage = messages[messages.length - 1];
+        connectSocket();
 
-        if (lastMessage && lastMessage.sender === currentUserName && lastRepliedMessageId.current !== lastMessage.id) {
-            const text = lastMessage.text.toLowerCase();
-            let responsePool = CONTEXTUAL_RESPONSES.DEFAULT;
+        const handleConnect = () => {
+            console.log(`[ChatTemp] Socket connected, joining room: ${roomId}`);
+            setIsConnected(true);
+            joinChatRoom(roomId);
+        };
 
-            const isSchedulingText = /available|when|time|schedule|pm|am|thursday|evening/.test(text);
+        const handleDisconnect = () => {
+            setIsConnected(false);
+        };
 
-            if (isSchedulingText) {
-                if (!isSchedulingConfirmed) {
-                    responsePool = CONTEXTUAL_RESPONSES.AVAILABILITY;
-                    setIsSchedulingConfirmed(true);
-                } else {
-                    responsePool = CONTEXTUAL_RESPONSES.DEFAULT;
-                }
-            } else if (/experience|how much|years|detail/.test(text)) {
-                responsePool = CONTEXTUAL_RESPONSES.TEACHER_DETAILS_QUERY;
-            } else if (/skill|teach|offering|what you can/.test(text)) {
-                responsePool = CONTEXTUAL_RESPONSES.ASK_USER_SKILLS;
-            } else if (/hi|hello|hey/.test(text)) {
-                responsePool = CONTEXTUAL_RESPONSES.GREETING;
+        const handleIncomingMessage = (data) => {
+            console.log(`[ChatTemp] Received message from room ${data?.roomId}, expecting ${roomId}`, data);
+            if (!data || data.roomId !== roomId) {
+                console.warn(`[ChatTemp] Message room mismatch or missing data`);
+                return;
             }
 
-            let teacherReply = responsePool[Math.floor(Math.random() * responsePool.length)];
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: data.messageId || `${data.timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+                    sender: data.senderName || 'Participant',
+                    text: data.message,
+                    time: new Date(data.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                },
+            ]);
+        };
 
-            if (!isInitialGreetingSent && messages.length > 0) {
-                teacherReply = `Hi, I saw your swap request for ${skillTitle}. ${teacherReply}`;
-                setIsInitialGreetingSent(true);
-            }
+        socket.on('connect', handleConnect);
+        socket.on('disconnect', handleDisconnect);
+        socket.on('chat_message', handleIncomingMessage);
 
-            const replyMessage = {
-                id: Date.now() + 1,
-                sender: 'Teacher',
-                text: teacherReply,
-                time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-            };
-
-            const timer = setTimeout(() => {
-                setMessages(prev => [...prev, replyMessage]);
-                lastRepliedMessageId.current = lastMessage.id;
-            }, 1000);
-            return () => clearTimeout(timer);
+        if (socket.connected) {
+            handleConnect();
         }
-    }, [messages, currentUserName, skillTitle, isInitialGreetingSent, isSchedulingConfirmed]); 
+
+        return () => {
+            socket.off('connect', handleConnect);
+            socket.off('disconnect', handleDisconnect);
+            socket.off('chat_message', handleIncomingMessage);
+        };
+    }, [isLoggedIn, roomId, currentUserName]);
 
     const handleSecureDeal = () => {
         if (!isLoggedIn || !user?.skillsToTeach || user.skillsToTeach.length === 0) {
@@ -140,17 +170,18 @@ const ChatTemp = () => {
 
     const handleSend = (e) => {
         e.preventDefault();
-        if (newMessage.trim() === '') return;
+        const trimmed = newMessage.trim();
+        if (trimmed === '') return;
 
-        const sentMessage = {
-            id: Date.now(),
-            sender: currentUserName, 
-            text: newMessage.trim(),
-            time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        };
+        if (!socket.connected) {
+            alert("Please wait, connecting to chat...");
+            return;
+        }
 
-        setMessages(prev => [...prev, sentMessage]);
-        setNewMessage(''); 
+        const messageId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        sendChatMessage({ roomId, message: trimmed, senderName: currentUserName, messageId });
+        setNewMessage('');
     };
     
     const canSecureDeal = isLoggedIn && user?.skillsToTeach && user.skillsToTeach.length > 0;
@@ -164,6 +195,16 @@ const ChatTemp = () => {
             </h1>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
                 You are: **{user?.firstName || 'Guest'} {user?.lastName || ''}** | Swapping to learn: **{skillTitle}**
+                <span style={{ 
+                    marginLeft: '10px', 
+                    padding: '2px 8px', 
+                    borderRadius: '10px', 
+                    fontSize: '12px',
+                    backgroundColor: isConnected ? '#10b981' : '#ef4444',
+                    color: 'white'
+                }}>
+                    {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+                </span>
             </p>
             
             <div style={{ 
@@ -235,11 +276,11 @@ const ChatTemp = () => {
                             type="text"
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
-                            placeholder="Type your message..."
+                            placeholder={isConnected ? "Type your message..." : "Connecting..."}
                             style={{ flexGrow: 1, padding: '10px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
-                            disabled={!isLoggedIn}
+                            disabled={!isLoggedIn || !isConnected}
                         />
-                        <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px' }} disabled={!isLoggedIn}>
+                        <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px' }} disabled={!isLoggedIn || !isConnected}>
                             Send
                         </button>
                     </form>

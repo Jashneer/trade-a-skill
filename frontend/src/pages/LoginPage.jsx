@@ -53,15 +53,9 @@ const LoginPage = () => {
                     return;
                 }
 
-                // ✅ Save user in context
-                login(data.user);
-
-                // 🔥 SAVE JWT TOKEN (IMPORTANT)
-                if (data.token) {
-                    localStorage.setItem('jwtToken', data.token);
-                }
-
-                navigate('/profile');  
+                // ✅ Save user in context and persist token before socket startup
+                login(data.user, data.token);
+                navigate('/profile');
                 
             } catch (err) {
                 console.error('Login error', err);
