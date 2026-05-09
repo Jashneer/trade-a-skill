@@ -4,7 +4,7 @@ const ExportButton = () => {
     const handleExport = () => {
         // Member 4: Direct streaming link trigger
         // Isse browser automatically TradeReport.json download kar lega
-        window.location.href = 'http://localhost:3000/api/export-history?format=json';
+        window.location.href = 'http://localhost:5000/api/export-history?format=json';
     };
 
     return (

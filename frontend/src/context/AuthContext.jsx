@@ -1,6 +1,7 @@
 // src/context/AuthContext.jsx (FINAL CORRECTED VERSION)
 import * as React from 'react';
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useContext, useEffect } from 'react';
+import { connectSocket } from '../socket-client';
 
 // 1. Create the Context
 const AuthContext = createContext(null);
@@ -37,7 +38,12 @@ const getInitialUser = () => {
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(getInitialUser());
     
-    const login = (userData) => {
+    const login = (userData, token) => {
+        // Persist JWT token first so socket auth can start successfully
+        if (token) {
+            localStorage.setItem('jwtToken', token);
+        }
+
         // Ensure new user data is saved with validated array properties during login
         const fullUser = { 
             ...userData, 
@@ -49,7 +55,7 @@ export const AuthProvider = ({ children }) => {
         setUser(fullUser);
         localStorage.setItem("currentUser", JSON.stringify(fullUser));
         localStorage.setItem("isLoggedIn", "true");
-        import('../socket-client').then(({ connectSocket }) => connectSocket());
+        connectSocket();
 
     
     };
@@ -120,6 +126,12 @@ export const AuthProvider = ({ children }) => {
             return updatedUser;
         });
     };
+
+    useEffect(() => {
+        if (user?.isLoggedIn) {
+            connectSocket();
+        }
+    }, [user?.isLoggedIn]);
 
     const value = { user, login, logout, updateProfile, isLoading: false };
 

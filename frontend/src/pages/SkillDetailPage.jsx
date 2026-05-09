@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SwapConfirmationModal from '../components/UI/SwapConfirmationModal';
-
+import { connectSocket, emitSwapRequest } from '../socket-client';
 const SkillDetailPage = () => {
     const { skillId } = useParams();
     const navigate = useNavigate();
@@ -119,7 +119,13 @@ const SkillDetailPage = () => {
             stored.push(newReq);
             localStorage.setItem('userSwapRequests', JSON.stringify(stored));
 
-            // Show simple success feedback and navigate to profile
+            connectSocket();
+            emitSwapRequest({
+                teacherEmail: teacherProfile?.email || skill.teacher.email || null,
+                senderName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Learner',
+                message: `${user.firstName || 'A learner'} requested a swap for ${skillTitle}.`,
+            });
+
             alert('✅ Swap Request Sent!');
             setIsModalOpen(false);
             navigate('/profile', { state: { refreshKey: Date.now() } });

@@ -35,10 +35,7 @@ const SignupPage = () => {
 
     // After successful signup
     const handleLoginSuccess = (userData, token) => {
-        login(userData);
-        if (token) {
-            localStorage.setItem('jwtToken', token);
-        }
+        login(userData, token);
         alert('Account created successfully!');
         window.location.replace('/profile');
     };
