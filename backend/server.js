@@ -30,7 +30,7 @@ const PORT = process.env.PORT || 5000;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
 
 app.use(cors({
-  origin: ['https://trade-a-skill-r5lu.vercel.app/', 'http://localhost:5173'],
+  origin: ['https://trade-a-skill-r5lu.vercel.app', 'http://localhost:5173'],
   credentials: true
 }));
 
