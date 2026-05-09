@@ -5,7 +5,12 @@ import { Link } from 'react-router-dom';
 // import { MOCK_DATA } from '../data/mockData';
 import { useState, useEffect } from 'react';
 import FeatureCard from '../components/FeatureCard';
-import { getApiEndpoint } from '../config/api';
+
+// Get API endpoint URL based on environment
+const getApiUrl = (path) => {
+  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
+  return baseUrl + path;
+};
 
 const HomePage = () => {
     // Scroll function (replaces JS scrollIntoView)
@@ -97,7 +102,7 @@ function FeatureList() {
         let mounted = true;
         const fetchFeatures = async () => {
             try {
-                const res = await fetch(getApiEndpoint('/api/features'));
+                const res = await fetch(getApiUrl('/api/features'));
                 if (!res.ok) throw new Error('Failed to fetch features');
                 const data = await res.json();
                 if (mounted) setFeatures(data || []);

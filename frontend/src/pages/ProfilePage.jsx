@@ -6,7 +6,12 @@ import { useAuth } from '../context/AuthContext';
 import { getInitials } from '../components/SkillCard'; 
 import ReviewModal from '../components/UI/ReviewModal';
 import ExportButton from "../components/ExportButton"; // Ye line add kar
-import { getApiEndpoint } from '../config/api';
+
+// Get API endpoint URL based on environment
+const getApiUrl = (path) => {
+  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
+  return baseUrl + path;
+};
 
 // --- Helper Functions (Must be defined outside the component) ---
 
@@ -374,7 +379,7 @@ const ProfilePage = () => {
             const formData = new FormData();
             formData.append('profileImage', file);
 
-            const res = await fetch(getApiEndpoint('/api/upload/profile-image'), {
+            const res = await fetch(getApiUrl('/api/upload/profile-image'), {
                 method: 'POST',
                 headers: token ? { 'Authorization': 'Bearer ' + token } : {},
                 body: formData,

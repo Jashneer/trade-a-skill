@@ -2,7 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getApiEndpoint } from '../config/api';
+
+// Get API endpoint URL based on environment
+const getApiUrl = (path) => {
+  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
+  return baseUrl + path;
+};
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -38,7 +43,7 @@ const LoginPage = () => {
             try {
                 const { email, password } = form;
 
-                const res = await fetch(getApiEndpoint('/api/auth/login'), {
+                const res = await fetch(getApiUrl('/api/auth/login'), {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
