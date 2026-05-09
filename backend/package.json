@@ -9,7 +9,8 @@
     "db:check": "node scripts/checkMongoConnection.js",
     "db:migrate": "node scripts/migrateJsonToMongo.js",
     "admin:reset-password": "node scripts/resetAdminPassword.js",
-    "user:delete": "node scripts/deleteUserByEmail.js"
+    "user:delete": "node scripts/deleteUserByEmail.js",
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -34,8 +35,10 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "jest": "^30.4.2",
     "nodemon": "^3.1.14",
-    "prisma": "^7.8.0"
+    "prisma": "^7.8.0",
+    "supertest": "^7.2.2"
   },
   "bcryptjs": "^2.4.3",
   "jsonwebtoken": "^9.0.2",
