@@ -250,18 +250,23 @@ app.get(/^\/(?!api).*/, (req, res, next) => {
 app.use(errorHandler);
 
 const startServer = async () => {
-    await connectDB();
-
-    server.listen(PORT, '0.0.0.0', () => {
-        console.log('==========================================');
+  // 1. Only connect to DB and start the listener if we are NOT testing
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      await connectDB();
+      
+      server.listen(PORT, '0.0.0.0', () => {
+        console.log('====================================');
         console.log(`SERVER RUNNING: http://localhost:${PORT}`);
-        console.log('==========================================');
-    });
+        console.log('====================================');
+      });
+    } catch (err) {
+      console.error('Failed to start server:', err);
+      process.exit(1);
+    }
+  }
 };
 
-startServer().catch((err) => {
-    console.error('Failed to start server:', err.message);
-    process.exit(1);
-});
+startServer();
 
 module.exports = app;
