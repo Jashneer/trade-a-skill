@@ -10,6 +10,7 @@ const errorHandler = require('./middleware/errorHandler');
 const { sessionConfig, attachCurrentUser } = require('./middleware/sessionHandler');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
+const uploadRoutes = require('./routes/upload');
 const User = require('./models/User');
 const Skill = require('./models/Skill');
 
@@ -37,6 +38,7 @@ const dbPath = path.join(__dirname, 'data', 'db.json');
 const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 
 app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Concept 2 - SSR Admin Route [cite: 166, 206]
 app.get('/admin', async (req, res) => {
@@ -63,6 +65,14 @@ app.get('/admin', async (req, res) => {
 
     // Renders the admin.ejs file and passes user data
     res.render('admin', { users: normalizedUsers });
+});
+
+// SSR Upload Page - Renders the EJS form with enctype="multipart/form-data" (Member 3)
+app.get('/upload', (req, res) => {
+    if (!req.user) {
+        return res.status(401).send('Authentication required. Please log in to upload images.');
+    }
+    res.render('upload', { profileResult: null, skillResult: null });
 });
 
 app.get('/api/features', (req, res, next) => {
