@@ -5,6 +5,9 @@ const authVerify = require('./middleware/authVerify');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const userRoutes = require('./routes/userRoutes');
+const skillRoutes = require('./routes/skillRoutes');
+const swapRoutes = require('./routes/swapRoutes');
 require('dotenv').config();
 
 const logger = require('./middleware/logger');
@@ -42,7 +45,7 @@ const frontendDistPath = path.join(__dirname, '..', 'frontend', 'dist');
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:5174',
+        origin: 'http://localhost:5173',
         methods: ['GET', 'POST'],
         credentials: true,
     },
@@ -146,6 +149,9 @@ io.on('connection', (socket) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/skills', skillRoutes);
+app.use('/api/swap-requests', swapRoutes);
 
 // Concept 2 - SSR Admin Route [cite: 166, 206]
 app.get('/admin', async (req, res) => {
@@ -182,97 +188,6 @@ app.get('/api/features', (req, res, next) => {
     });
 });
 
-app.get('/api/skills', async (req, res) => {
-    const skills = await Skill.find({}).sort({ createdAt: -1 }).lean();
-    const normalizedSkills = skills.map((skill) => {
-        const normalizedSkill = {
-            ...skill,
-            id: String(skill._id),
-        };
-        delete normalizedSkill._id;
-        return normalizedSkill;
-    });
-
-    res.json(normalizedSkills);
-});
-
-app.get('/api/users', authVerify, async (req, res) => {
-    const email = (req.query.email || '').toString().toLowerCase().trim();
-    const query = email ? { email } : {};
-    const users = await User.find(query).sort({ createdAt: -1 }).lean();
-    const normalizedUsers = users.map((user) => {
-        const normalizedUser = {
-            ...user,
-            id: String(user._id),
-        };
-        delete normalizedUser._id;
-        return normalizedUser;
-    });
-
-    res.json(normalizedUsers);
-});
-
-app.post('/api/users', async (req, res) => {
-    try {
-        const payload = { ...req.body };
-        delete payload.id;
-
-        if (!Array.isArray(payload.skillsToTeach)) payload.skillsToTeach = [];
-        if (!Array.isArray(payload.skillsToLearn)) payload.skillsToLearn = [];
-
-        const createdUser = await User.create(payload);
-        req.session.userId = createdUser._id;
-        res.status(201).json(createdUser.toJSON());
-    } catch (error) {
-        if (error && error.code === 11000) {
-            return res.status(409).json({ message: 'Email already exists' });
-        }
-
-        if (error && (error.name === 'ValidationError' || error.name === 'StrictModeError')) {
-            return res.status(400).json({ message: error.message });
-        }
-
-        throw error;
-    }
-});
-
-app.patch('/api/users/:id', authVerify, async (req, res) => {
-    try {
-        const userId = req.params.id;
-        if (req.user._id.toString() !== userId) {
-            return res.status(403).json({ message: 'Unauthorized' });
-        }
-
-const updates = { ...req.body };
-if (updates.password) {
-    return res.status(400).json({ message: 'Password update not allowed here' });
-}
-        delete updates.id;
-
-        const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-            new: true,
-            runValidators: true,
-            context: 'query',
-        });
-
-        if (!updatedUser) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json(updatedUser.toJSON());
-    } catch (error) {
-        if (error && error.name === 'CastError') {
-            return res.status(400).json({ message: 'Invalid user id' });
-        }
-
-        if (error && (error.name === 'ValidationError' || error.name === 'StrictModeError')) {
-            return res.status(400).json({ message: error.message });
-        }
-
-        throw error;
-    }
-});
-
 app.post('/api/activity-log', authVerify,(req, res, next) => {
     const logPath = path.join(__dirname, 'data', 'activity.txt');
     const logEntry = `Activity: ${JSON.stringify(req.body)}\n`;
@@ -281,57 +196,6 @@ app.post('/api/activity-log', authVerify,(req, res, next) => {
         if (err) return next(err); // Concept 1: Pass error to global handler
 
         res.json({ message: 'Activity logged successfully' });
-    });
-});
-
-app.get('/api/swap-requests',  authVerify, (req, res, next) => {
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // Concept 1: Pass error to global handler
-
-        const db = JSON.parse(data);
-        res.json(db.swapRequests || []);
-    });
-});
-
-app.post('/api/swap-requests', authVerify, (req, res, next) => {
-    const newRequest = req.body;
-
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // Concept 1: Pass error to global handler
-
-        const db = JSON.parse(data);
-        const requestWithId = {
-            id: Date.now().toString(),
-            ...newRequest,
-        };
-
-        db.swapRequests = db.swapRequests || [];
-        db.swapRequests.push(requestWithId);
-
-        fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
-
-            res.status(201).json(requestWithId);
-        });
-    });
-});
-
-app.delete('/api/swap-requests/:id', authVerify,(req, res, next) => {
-    const requestId = req.params.id;
-
-    fs.readFile(dbPath, 'utf8', (err, data) => {
-        if (err) return next(err); // Concept 1: Pass error to global handler
-
-        const db = JSON.parse(data);
-        db.swapRequests = (db.swapRequests || []).filter(
-            request => request.id !== requestId
-        );
-
-        fs.writeFile(dbPath, JSON.stringify(db, null, 2), (writeErr) => {
-            if (writeErr) return next(writeErr); // Passes the writing error to errorHandler.js
-
-            res.json({ message: 'Swap request deleted successfully' });
-        });
     });
 });
 
@@ -389,3 +253,5 @@ startServer().catch((err) => {
     console.error('Failed to start server:', err.message);
     process.exit(1);
 });
+
+module.exports = app;

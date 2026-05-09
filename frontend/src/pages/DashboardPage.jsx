@@ -12,16 +12,33 @@ const loadAllSkills = async () => {
         // 1. GET static skills
         const skillsRes = await fetch('/api/skills');
         if (!skillsRes.ok) throw new Error('Failed to load skills');
-        const staticSkills = await skillsRes.json();
+        const skillsData = await skillsRes.json();
+
+const staticSkills = Array.isArray(skillsData)
+    ? skillsData
+    : skillsData.data || [];
 
         // 2. GET users
         const usersRes = await fetch('/api/users');
         if (!usersRes.ok) throw new Error('Failed to load users');
-        const users = await usersRes.json();
+        const usersData = await usersRes.json();
+
+const users = Array.isArray(usersData)
+    ? usersData
+    : usersData.data || [];
 
         // 3. GET swapReviews
-        const reviewsRes = await fetch('/api/swap-reviews');
-        const allReviews = reviewsRes.ok ? await reviewsRes.json() : [];
+        let allReviews = [];
+
+try {
+    const reviewsRes = await fetch('/api/swap-reviews');
+
+    if (reviewsRes.ok) {
+        allReviews = await reviewsRes.json();
+    }
+} catch (error) {
+    console.log('Swap reviews unavailable');
+}
 
         const allSkills = Array.isArray(staticSkills) ? [...staticSkills] : [];
 
