@@ -30,9 +30,10 @@ const PORT = process.env.PORT || 5000;
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
 
 app.use(cors({
-    origin: 'http://localhost:5174',
-    credentials: true,
+  origin: ['https://trade-a-skill-r5lu.vercel.app/', 'http://localhost:5173'],
+  credentials: true
 }));
+
 app.use(express.json()); // Built-in Body-parser
 app.use(sessionConfig); // Session management middleware
 app.use(attachCurrentUser); // Attach current user from session if available
