@@ -35,6 +35,11 @@ const userSchema = new mongoose.Schema(
             maxlength: 500,
             default: '',
         },
+        profileImage: {
+            type: String,
+            trim: true,
+            default: '',
+        },
         skillsToTeach: {
             type: [String],
             default: [],

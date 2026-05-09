@@ -71,6 +71,7 @@ model User {
   email     String   @unique            // Must be unique (like Mongoose's unique: true)
   password  String                       // Hashed password (min length checked in app code)
   bio       String   @default("")  @db.VarChar(500) // Optional bio, max 500 chars
+  profileImage String @default("")                   // Cloudinary URL for profile picture (Member 3)
   
   // --- Skills (stored as text arrays in PostgreSQL) ---
   skillsToTeach String[] @default([])   // e.g., ["JavaScript", "Python"]
