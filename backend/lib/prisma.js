@@ -6,11 +6,10 @@ const getPrisma = async () => {
         return prismaInstance;
     }
 
-    const prismaModule = await import('../generated/prisma/client.ts');
-
-    const { PrismaPg } = await import('@prisma/adapter-pg');
-
-    const pg = await import('pg');
+    // Directly use @prisma/client for CommonJS compatibility
+    const { PrismaClient } = require('@prisma/client');
+    const { PrismaPg } = require('@prisma/adapter-pg');
+    const pg = require('pg');
 
     const connectionString = process.env.DATABASE_URL;
 
@@ -19,10 +18,6 @@ const getPrisma = async () => {
     });
 
     const adapter = new PrismaPg(pool);
-
-    const PrismaClient =
-        prismaModule.PrismaClient ||
-        prismaModule.default?.PrismaClient;
 
     prismaInstance = new PrismaClient({
         adapter
