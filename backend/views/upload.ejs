@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Image — TradeASkill</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --success: #10b981;
+            --error: #ef4444;
+            --border: #475569;
+            --radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 36px;
+            font-size: 0.95rem;
+        }
+
+        .upload-container {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            width: 100%;
+            max-width: 540px;
+        }
+
+        .upload-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            transition: border-color 0.2s ease;
+        }
+
+        .upload-card:hover {
+            border-color: var(--accent);
+        }
+
+        .upload-card h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .upload-card p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        input[type="file"] {
+            background: var(--bg-card);
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 20px 16px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        input[type="file"]:hover {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        input[type="file"]::file-selector-button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            margin-right: 12px;
+            transition: background 0.2s ease;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-upload {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-upload:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-upload:active {
+            transform: translateY(0);
+        }
+
+        /* Result / Preview */
+        .upload-result {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .upload-result.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .upload-result.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .preview-img {
+            margin-top: 12px;
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid var(--border);
+        }
+
+        .result-url {
+            margin-top: 8px;
+            word-break: break-all;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .back-link {
+            margin-top: 32px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 1.5rem; }
+            .upload-card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>📷 Upload Image</h1>
+    <p class="subtitle">Upload profile pictures or skill thumbnails to Cloudinary</p>
+
+    <div class="upload-container">
+
+        <!-- Profile Image Upload Card -->
+        <div class="upload-card">
+            <h2>Profile Image</h2>
+            <p>Upload a new profile picture. Accepted formats: JPEG, PNG, GIF, WebP (max 5MB).</p>
+
+            <form id="profile-form" action="/api/upload/profile-image" method="POST" enctype="multipart/form-data">
+                <label for="profileImage">Select Image</label>
+                <input type="file" id="profileImage" name="profileImage" accept="image/jpeg,image/png,image/gif,image/webp" required />
+                <button type="submit" class="btn-upload">Upload Profile Image</button>
+            </form>
+
+            <% if (typeof profileResult !== 'undefined' && profileResult) { %>
+                <div class="upload-result <%= profileResult.success ? 'success' : 'error' %>">
+                    <strong><%= profileResult.message %></strong>
+                    <% if (profileResult.success && profileResult.imageUrl) { %>
+                        <img class="preview-img" src="<%= profileResult.imageUrl %>" alt="Uploaded profile image" />
+                        <p class="result-url">URL: <%= profileResult.imageUrl %></p>
+                    <% } %>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Skill Image Upload Card -->
+        <div class="upload-card">
+            <h2>Skill Thumbnail</h2>
+            <p>Upload an image for a skill listing. Accepted formats: JPEG, PNG, GIF, WebP (max 5MB).</p>
+
+            <form id="skill-form" action="/api/upload/skill-image" method="POST" enctype="multipart/form-data">
+                <label for="skillImage">Select Image</label>
+                <input type="file" id="skillImage" name="skillImage" accept="image/jpeg,image/png,image/gif,image/webp" required />
+                <button type="submit" class="btn-upload">Upload Skill Image</button>
+            </form>
+
+            <% if (typeof skillResult !== 'undefined' && skillResult) { %>
+                <div class="upload-result <%= skillResult.success ? 'success' : 'error' %>">
+                    <strong><%= skillResult.message %></strong>
+                    <% if (skillResult.success && skillResult.imageUrl) { %>
+                        <img class="preview-img" src="<%= skillResult.imageUrl %>" alt="Uploaded skill image" />
+                        <p class="result-url">URL: <%= skillResult.imageUrl %></p>
+                    <% } %>
+                </div>
+            <% } %>
+        </div>
+
+    </div>
+
+    <a class="back-link" href="/">← Back to Home</a>
+
+    <script>
+        // Intercept form submissions via AJAX to display results inline
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = new FormData(form);
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+
+                submitBtn.textContent = 'Uploading...';
+                submitBtn.disabled = true;
+
+                try {
+                    // Get auth token from localStorage (same pattern as the React frontend)
+                    const token = localStorage.getItem('authToken') || '';
+
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                        body: formData,
+                    });
+
+                    const data = await response.json();
+
+                    // Remove any existing result div in this card
+                    const card = form.closest('.upload-card');
+                    const oldResult = card.querySelector('.upload-result');
+                    if (oldResult) oldResult.remove();
+
+                    // Create result element
+                    const resultDiv = document.createElement('div');
+                    resultDiv.classList.add('upload-result', data.success ? 'success' : 'error');
+
+                    let html = `<strong>${data.message}</strong>`;
+                    if (data.success && data.data && data.data.imageUrl) {
+                        html += `<img class="preview-img" src="${data.data.imageUrl}" alt="Uploaded image" />`;
+                        html += `<p class="result-url">URL: ${data.data.imageUrl}</p>`;
+                    }
+
+                    resultDiv.innerHTML = html;
+                    card.appendChild(resultDiv);
+                } catch (err) {
+                    const card = form.closest('.upload-card');
+                    const oldResult = card.querySelector('.upload-result');
+                    if (oldResult) oldResult.remove();
+
+                    const resultDiv = document.createElement('div');
+                    resultDiv.classList.add('upload-result', 'error');
+                    resultDiv.innerHTML = `<strong>Upload failed: ${err.message}</strong>`;
+                    card.appendChild(resultDiv);
+                } finally {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
