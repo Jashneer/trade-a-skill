@@ -9,7 +9,7 @@
 // --- Generator: tells Prisma to generate a JavaScript client ---
 // Member 2 will use this client to talk to the database.
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
 }
 
 // --- Datasource: tells Prisma which database to connect to ---
