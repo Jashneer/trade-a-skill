@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 
 // Get API endpoint URL based on environment
 const getApiUrl = (path) => {
-  const baseUrl = typeof import !== 'undefined' && import.meta ? (import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com')) : 'https://trade-a-skill.onrender.com';
+  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
   return baseUrl + path;
 };
 
