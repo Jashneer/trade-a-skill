@@ -1,23 +1,25 @@
-// frontend/src/socket-client.js
+
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+// CRITICAL FIX: Use the Render Backend URL, not the Vercel Frontend origin
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Get JWT token stored after login
-const getToken = () => localStorage.getItem('jwtToken') || '';
+// Get JWT token - Ensure this key matches what Member 2 used in Login.jsx
+const getToken = () => localStorage.getItem('token') || localStorage.getItem('jwtToken') || '';
 
 const socket = io(SOCKET_URL, {
     autoConnect: false,
     reconnectionAttempts: 5,
     reconnectionDelay: 2000,
     withCredentials: true,
+    transports: ['websocket', 'polling'], // Essential for reliable cloud connections
     auth: {
-        token: getToken(),  // ← THIS IS THE KEY FIX
+        token: getToken(),
     },
 });
 
 socket.on('connect', () => {
-    console.log(`[Socket.io] Connected — ID: ${socket.id}`);
+    console.log(`[Socket.io] Connected to Render — ID: ${socket.id}`);
 });
 
 socket.on('disconnect', (reason) => {
@@ -27,10 +29,8 @@ socket.on('disconnect', (reason) => {
 socket.on('connect_error', (err) => {
     console.warn(`[Socket.io] Connection error: ${err.message}`);
     if (err.message.includes('Authentication')) {
-        console.error('[Socket.io] Authentication failed. Please log in again.');
-        // Optionally disconnect and clear invalid token
-        localStorage.removeItem('jwtToken');
-        window.location.href = '/login';
+        console.error('[Socket.io] Auth failed. Token might be expired.');
+        // Don't auto-redirect here to avoid infinite loops during dev
     }
 });
 
@@ -46,14 +46,17 @@ export const normalizeRoomId = (value) => {
 };
 
 // Connect with fresh token (call this after login)
-export const connectSocket = () => {
-    const token = getToken();
+export const connectSocket = (providedToken = null) => {
+    const token = providedToken || getToken();
+    
     if (!token) {
         console.warn('[Socket.io] Socket connect aborted: missing auth token.');
         return;
     }
+
+    // Update auth object with the fresh token
     socket.auth = { token };
-    // Force disconnect before reconnecting to ensure fresh auth
+
     if (socket.connected) {
         socket.disconnect();
         setTimeout(() => socket.connect(), 100);
@@ -68,19 +71,26 @@ export const disconnectSocket = () => {
 
 // Emit swap request to notify teacher in real time
 export const emitSwapRequest = (data) => {
+    if (!socket.connected) connectSocket();
     socket.emit('swap_request_sent', data);
 };
 
 // Join a chat room
 export const joinChatRoom = (roomId) => {
-    console.log(`[socket-client] Emitting join_chat_room: ${roomId}`);
-    socket.emit('join_chat_room', { roomId });
+    const normalized = normalizeRoomId(roomId);
+    console.log(`[socket-client] Joining room: ${normalized}`);
+    socket.emit('join_chat_room', { roomId: normalized });
 };
 
 // Send a chat message
 export const sendChatMessage = ({ roomId, message, senderName, messageId }) => {
-    console.log(`[socket-client] Emitting chat_message to room ${roomId}:`, { message, senderName });
-    socket.emit('chat_message', { roomId, message, senderName, messageId });
+    const normalized = normalizeRoomId(roomId);
+    socket.emit('chat_message', { 
+        roomId: normalized, 
+        message, 
+        senderName, 
+        messageId 
+    });
 };
 
 export default socket;
