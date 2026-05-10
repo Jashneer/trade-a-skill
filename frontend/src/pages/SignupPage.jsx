@@ -64,7 +64,7 @@ const SignupPage = () => {
     const handleLoginSuccess = (userData, token) => {
         login(userData, token);
         alert('Account created successfully!');
-        window.location.replace('/profile');
+        navigate('/profile');
     };
 
     // ✅ SIGNUP FUNCTION
