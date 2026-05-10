@@ -5,7 +5,8 @@ import { useAuth } from '../context/AuthContext';
 
 // Get API endpoint URL based on environment
 const getApiUrl = (path) => {
-  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
+  const envApiUrl = import.meta.env.VITE_API_URL;
+  const baseUrl = envApiUrl || (import.meta.env.DEV ? '' : 'https://trade-a-skill.onrender.com');
   return baseUrl + path;
 };
 const SignupPage = () => {
@@ -94,10 +95,17 @@ const SignupPage = () => {
                 body: JSON.stringify(payload),
             });
 
-            const data = await res.json();
+            const responseText = await res.text();
+            let data = null;
+            try {
+                data = responseText ? JSON.parse(responseText) : null;
+            } catch (parseError) {
+                console.warn('Signup response could not be parsed as JSON:', responseText);
+                throw new Error(`Signup failed: invalid server response (${res.status})`);
+            }
 
             if (!res.ok) {
-                throw new Error(data.message || `Signup failed (${res.status})`);
+                throw new Error(data?.message || `Signup failed (${res.status})`);
             }
 
             if (!data || !data.user) {
