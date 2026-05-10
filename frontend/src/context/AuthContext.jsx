@@ -2,12 +2,7 @@
 import * as React from 'react';
 import { createContext, useState, useContext, useEffect } from 'react';
 import { connectSocket } from '../socket-client';
-
-// Get API endpoint URL based on environment
-const getApiUrl = (path) => {
-  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
-  return baseUrl + path;
-};
+import { getApiUrl } from '../lib/api';
 
 // 1. Create the Context
 const AuthContext = createContext(null);

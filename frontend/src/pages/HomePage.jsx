@@ -5,12 +5,7 @@ import { Link } from 'react-router-dom';
 // import { MOCK_DATA } from '../data/mockData';
 import { useState, useEffect } from 'react';
 import FeatureCard from '../components/FeatureCard';
-
-// Get API endpoint URL based on environment
-const getApiUrl = (path) => {
-  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
-  return baseUrl + path;
-};
+import { getApiUrl } from '../lib/api';
 
 const HomePage = () => {
     // Scroll function (replaces JS scrollIntoView)

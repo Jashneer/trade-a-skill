@@ -2,13 +2,8 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl } from '../lib/api';
 
-// Get API endpoint URL based on environment
-const getApiUrl = (path) => {
-  const envApiUrl = import.meta.env.VITE_API_URL;
-  const baseUrl = envApiUrl || (import.meta.env.DEV ? '' : 'https://trade-a-skill.onrender.com');
-  return baseUrl + path;
-};
 const SignupPage = () => {
     const navigate = useNavigate();
     const { user, login } = useAuth();

@@ -3,16 +3,11 @@ import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react'; 
 import SkillCard from '../components/SkillCard'; 
 import { useAuth } from '../context/AuthContext'; 
+import { getApiUrl } from '../lib/api';
 
 
 // --- Helper Function to Load and Transform User Skills ---
 // loadAllSkills will fetch from the JSON Server and merge static skills + user-submitted skills
-
-// Get API endpoint URL based on environment
-const getApiUrl = (path) => {
-  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
-  return baseUrl + path;
-};
 
 const loadAllSkills = async () => {
     try {

@@ -6,12 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getInitials } from '../components/SkillCard'; 
 import ReviewModal from '../components/UI/ReviewModal';
 import ExportButton from "../components/ExportButton"; // Ye line add kar
-
-// Get API endpoint URL based on environment
-const getApiUrl = (path) => {
-  const baseUrl = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://trade-a-skill.onrender.com');
-  return baseUrl + path;
-};
+import { getApiUrl } from '../lib/api';
 
 // --- Helper Functions (Must be defined outside the component) ---
 

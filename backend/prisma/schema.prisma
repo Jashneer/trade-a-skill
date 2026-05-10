@@ -10,7 +10,6 @@
 // Member 2 will use this client to talk to the database.
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
 }
 
 // --- Datasource: tells Prisma which database to connect to ---
